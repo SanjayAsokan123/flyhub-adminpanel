@@ -1,0 +1,266 @@
+/* ---------------------------------------------------------
+   ROOT
+----------------------------------------------------------*/
+.sold-root {
+  width: 100%;
+  max-width: 1100px;
+  margin: auto;
+  padding: 20px;
+  font-family: "Poppins", sans-serif;
+  color: #2d3e50;
+}
+
+/* ---------------------------------------------------------
+   HEADER
+----------------------------------------------------------*/
+.sold-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+}
+
+.sold-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1c2b36;
+  margin: 0;
+}
+
+.sold-sub {
+  font-size: 14px;
+  color: #748a9d;
+  margin-top: 5px;
+}
+
+/* ---------------------------------------------------------
+   ACTION BAR
+----------------------------------------------------------*/
+.sold-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sold-search {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #c7d1db;
+  outline: none;
+  width: 220px;
+  font-size: 14px;
+  transition: 0.2s;
+}
+
+.sold-search:focus {
+  border-color: #5a8dee;
+  box-shadow: 0 0 0 2px rgba(90, 141, 238, 0.2);
+}
+
+.sold-select {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #c7d1db;
+  outline: none;
+  background: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.sold-btn {
+  padding: 10px 16px;
+  background: #0666eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: 0.2s;
+}
+
+.sold-btn:hover {
+  background: #054ec0;
+}
+
+/* ---------------------------------------------------------
+   LIST SECTION
+----------------------------------------------------------*/
+.sold-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sold-empty {
+  text-align: center;
+  font-size: 16px;
+  color: #9aa5af;
+  padding: 40px 0;
+}
+
+/* ---------------------------------------------------------
+   ITEM CARD
+----------------------------------------------------------*/
+.sold-item {
+  background: white;
+  padding: 16px 20px;
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  transition: 0.2s;
+}
+
+.sold-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.08);
+}
+
+.sold-item-left {
+  width: 70%;
+}
+
+.sold-item-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1a2b3c;
+}
+
+.sold-item-title span {
+  font-size: 14px;
+  color: #6c849b;
+}
+
+.sold-item-meta {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #445564;
+}
+
+.sold-item-meta.small {
+  font-size: 13px;
+  color: #7c8d9e;
+}
+
+/* Right Side */
+.sold-item-right {
+  text-align: right;
+}
+
+.sold-item-date {
+  font-size: 13px;
+  color: #7c8d9e;
+  margin-bottom: 8px;
+}
+
+/* ---------------------------------------------------------
+   STATUS COLORS
+----------------------------------------------------------*/
+.sold-item-status {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: capitalize;
+  width: fit-content;
+}
+
+.sold-item-status.green {
+  background: #d3f7d9;
+  color: #0b8a26;
+}
+
+.sold-item-status.red {
+  background: #ffdddd;
+  color: #ca1b1b;
+}
+
+.sold-item-status.blue {
+  background: #dce8ff;
+  color: #255fc4;
+}
+
+/* ---------------------------------------------------------
+   PAGINATION
+----------------------------------------------------------*/
+.sold-footer {
+  margin-top: 25px;
+  padding-top: 15px;
+  border-top: 1px solid #d3dce6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sold-pages {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sold-page-btn {
+  padding: 8px 14px;
+  background: #eef2f7;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  outline: none;
+  font-size: 14px;
+}
+
+.sold-page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sold-page-ind {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1c2b36;
+}
+
+/* ---------------------------------------------------------
+   Loading + Error
+----------------------------------------------------------*/
+.buyer-loading,
+.buyer-error {
+  text-align: center;
+  margin-top: 30px;
+  font-size: 16px;
+}
+
+.buyer-error {
+  color: #c91d1d;
+}
+
+/* ---------------------------------------------------------
+   RESPONSIVE
+----------------------------------------------------------*/
+@media (max-width: 768px) {
+  .sold-item {
+    flex-direction: column;
+    text-align: left;
+  }
+
+  .sold-item-right {
+    text-align: left;
+  }
+
+  .sold-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .sold-actions {
+    width: 100%;
+  }
+
+  .sold-search {
+    width: 100%;
+  }
+}

@@ -1,0 +1,255 @@
+/* ============ PAGE WRAPPER ============ */
+.page {
+  padding: 25px;
+  background-color: #f6f5fb;
+  min-height: 100vh;
+  font-family: "Poppins", sans-serif;
+}
+
+.page h2 {
+  color: #3c1f99;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ============ DRONE / PARTS / ACCESSORY CARDS ============ */
+.drone-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.drone-card {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  padding: 15px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.drone-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.drone-image {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+/* ============ ACTION BUTTONS ============ */
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.actions button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  transition: 0.25s ease;
+}
+
+.actions button:first-child {
+  background: #4caf50;
+}
+
+.actions button:first-child:hover {
+  background: #43a047;
+}
+
+.actions button:last-child {
+  background: #f44336;
+}
+
+.actions button:last-child:hover {
+  background: #d32f2f;
+}
+
+/* ============ BULK ACTIONS ============ */
+.bulk-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+}
+
+.approve-all-btn {
+  background-color: #6b46c1;
+  color: white;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.approve-all-btn:hover {
+  background-color: #553c9a;
+  transform: translateY(-1px);
+}
+
+/* ============ SELLER TABLE STYLING ============ */
+.seller-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.seller-table th,
+.seller-table td {
+  text-align: left;
+  padding: 12px 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.seller-table th {
+  background: #ede9ff;
+  color: #3c1f99;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+
+.seller-table tr:hover {
+  background-color: #f9f7ff;
+}
+
+.seller-table td {
+  font-size: 14px;
+  color: #333;
+}
+
+/* ============ STATUS BADGES ============ */
+.status-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-approved {
+  background-color: #c6f6d5;
+  color: #276749;
+}
+
+.status-rejected {
+  background-color: #fed7d7;
+  color: #9b2c2c;
+}
+
+.status-pending {
+  background-color: #faf089;
+  color: #744210;
+}
+
+/* ============ APPROVE / REJECT BUTTONS (TABLE) ============ */
+.actions button.approve-btn {
+  background-color: #4caf50;
+}
+
+.actions button.reject-btn {
+  background-color: #e53935;
+}
+
+/* ============ FORM PAGE (Add Drone / Part / Accessory) ============ */
+.add-form {
+  background: #fff;
+  border-radius: 10px;
+  padding: 25px;
+  max-width: 520px;
+  margin: 0 auto;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #3c1f99;
+}
+
+.form-group input,
+.form-group textarea {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 14px;
+  transition: 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #6b46c1;
+  box-shadow: 0 0 3px rgba(107, 70, 193, 0.5);
+}
+
+.preview-image {
+  margin-top: 10px;
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.15);
+}
+
+.add-form button {
+  background: #6b46c1;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 15px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.add-form button:hover {
+  background: #553c9a;
+}
+
+.status-message {
+  margin-top: 15px;
+  font-weight: bold;
+  text-align: center;
+  color: #333;
+}
+
+/* ============ RESPONSIVE DESIGN ============ */
+@media (max-width: 768px) {
+  .seller-table {
+    font-size: 13px;
+  }
+
+  .drone-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .bulk-actions {
+    justify-content: center;
+  }
+}

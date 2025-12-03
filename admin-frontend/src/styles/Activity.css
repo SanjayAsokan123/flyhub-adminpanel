@@ -1,0 +1,42 @@
+.activity {
+  background: white;
+  margin: 30px;
+  padding: 30px;
+  border-radius: 14px;
+  box-shadow: 0px 8px 16px rgba(0,0,0,0.08);
+}
+
+.activity h2 {
+  margin-bottom: 20px;
+  font-size: 20px;
+}
+
+.activity ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.activity li {
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 15px;
+}
+
+.activity li:last-child {
+  border-bottom: none;
+}
+
+/* Mobile activity */
+@media (max-width: 768px) {
+  .activity {
+    margin: 15px;
+    padding: 15px;
+  }
+  .activity h2 {
+    font-size: 16px;
+  }
+  .activity li {
+    font-size: 14px;
+  }
+}

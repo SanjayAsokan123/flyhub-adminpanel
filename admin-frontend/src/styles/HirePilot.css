@@ -1,0 +1,363 @@
+/* ===========================
+   MAIN CONTAINER
+=========================== */
+
+
+.rental-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 25px;
+  color: white;
+  text-align: center;
+}
+
+/* ===========================
+   STATUS TABS
+=========================== */
+.rental-tabs {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 25px;
+}
+
+.rental-tab {
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: 1px solid #dcdcdc;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: 0.25s ease;
+}
+
+.rental-tab:hover {
+  background: #f5f5f5;
+}
+
+.rental-tab.active {
+  background: #222;
+  color: white;
+  border-color: #222;
+}
+
+/* ===========================
+   GRID
+=========================== */
+.rental-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 22px;
+}
+
+/* ===========================
+   CARD
+=========================== */
+.rental-card {
+  background: #fff;
+  border: 1px solid #e7e7e7;
+  border-radius: 16px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  padding: 18px;
+  position: relative;
+  transition: 0.3s ease;
+}
+
+.rental-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+/* ===========================
+   BADGES
+=========================== */
+.rental-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.badge-approved {
+  background: #d7f5e5;
+  color: #1f8c4f;
+}
+
+.badge-pending {
+  background: #fff4c4;
+  color: #b18a00;
+}
+
+.badge-rejected {
+  background: #ffd8d8;
+  color: #d03333;
+}
+
+.badge-unknown {
+  background: #e0e0e0;
+  color: #666;
+}
+
+/* ===========================
+   IMAGE
+=========================== */
+.rental-img {
+  width: 100%;
+  height: 160px; /* reduced height */
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f1f1f1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  object-fit: cover;
+}
+
+/* ===========================
+   CONTENT STYLES
+=========================== */
+.rental-body {
+  margin-top: 15px;
+}
+
+.rental-name {
+  font-size: 17px;
+  margin: 0 0 8px;
+  color: #333;
+}
+
+.rental-meta {
+  font-size: 13px;
+  margin-bottom: 10px;
+  color: #555;
+  display: flex;
+  align-items: center;
+}
+
+.muted {
+  color: #777;
+}
+
+.dot {
+  margin: 0 8px;
+  color: #ccc;
+}
+
+.mono {
+  font-family: monospace;
+  color: #777;
+}
+
+.rental-prices {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.rental-desc {
+  font-size: 13px;
+  margin-bottom: 12px;
+  color: #555;
+  line-height: 1.4;
+}
+
+.rental-attributes {
+  margin: 0 0 12px;
+  list-style: none;
+  padding: 0;
+  font-size: 13px;
+}
+
+.rental-attributes li {
+  margin-bottom: 6px;
+  color: #555;
+}
+
+/* ===========================
+   DOCUMENTS
+=========================== */
+.documents-section {
+  margin-top: 10px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 3px solid #007bff;
+}
+
+.documents-section p {
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.document-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pdf-link {
+  padding: 8px 12px;
+  background: #007bff;
+  color: #fff;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.pdf-link:hover {
+  background: #0056b3;
+}
+
+/* ===========================
+   SELLER INFO
+=========================== */
+.seller-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+}
+
+.seller-section p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #555;
+}
+
+/* ===========================
+   ACTION BUTTONS
+=========================== */
+.rental-actions {
+  margin-top: 14px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  flex: 1;
+  min-width: 100px;
+  transition: 0.25s ease;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Approve button */
+.btn.approve {
+  background: #d8f8de;
+  color: #1b8f46;
+}
+.btn.approve:hover:not(:disabled) {
+  background: #c6f2d0;
+}
+
+/* Reject */
+.btn.reject {
+  background: #ffd8d8;
+  color: #d03333;
+}
+.btn.reject:hover:not(:disabled) {
+  background: #ffbfbf;
+}
+
+/* Pending */
+.btn.pending {
+  background: #fff1be;
+  color: #b08100;
+}
+.btn.pending:hover:not(:disabled) {
+  background: #ffeaa0;
+}
+
+/* ===========================
+   EMPTY STATES
+=========================== */
+.rental-empty {
+  text-align: center;
+  padding: 20px;
+  font-size: 15px;
+  color: #666;
+  background: #f9f9f9;
+  border-radius: 10px;
+}
+/* ===========================
+   SEARCH BAR
+=========================== */
+.rental-search-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 25px;
+}
+
+.rental-search-input {
+  width: 50%;
+  padding: 12px 16px;
+  border: 1px solid #dcdcdc;
+  border-radius: 12px 0 0 12px;
+  font-size: 14px;
+  font-family: "Poppins", sans-serif;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.rental-search-input:focus {
+  border-color: #222;
+  box-shadow: 0 0 0 2px rgba(34, 34, 34, 0.2);
+}
+
+.rental-search-button {
+  padding: 12px 16px;
+  background: #222;
+  color: white;
+  border: none;
+  border-radius: 0 12px 12px 0;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.3s ease;
+}
+
+.rental-search-button:hover {
+  background: #333;
+}
+
+/* Responsive adjustments for search */
+@media (max-width: 768px) {
+  .rental-search-input {
+    width: 70%;
+  }
+}
+
+@media (max-width: 480px) {
+  .rental-search-container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .rental-search-input {
+    width: 90%;
+    border-radius: 12px;
+    margin-bottom: 10px;
+  }
+
+  .rental-search-button {
+    width: 90%;
+    border-radius: 12px;
+  }
+}

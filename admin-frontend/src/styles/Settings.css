@@ -1,0 +1,44 @@
+.settings-page {
+  padding: 30px;
+  background: #fff;
+  margin: 20px;
+  border-radius: 12px;
+  box-shadow: 0px 6px 12px rgba(0,0,0,0.08);
+  color: #4c1d95;
+}
+
+.settings-page h2 {
+  font-size: 22px;
+  margin-bottom: 20px;
+}
+
+.settings-page ul {
+  list-style: none;
+  padding: 0;
+}
+
+.settings-page ul li {
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 16px;
+}
+
+.settings-page ul li:last-child {
+  border-bottom: none;
+}
+
+/* Toggle buttons (example) */
+.settings-page li span {
+  float: right;
+  cursor: pointer;
+  background: #9333ea;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: background 0.3s ease;
+}
+
+.settings-page li span:hover {
+  background: #7c3aed;
+}

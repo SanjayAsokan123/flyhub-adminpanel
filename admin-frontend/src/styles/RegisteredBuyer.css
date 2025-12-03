@@ -1,0 +1,207 @@
+/* RegisteredBuyer.css */
+.buyer-container {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f8f9ff 0%, #eef2ff 100%);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(26, 10, 91, 0.1);
+}
+
+.buyer-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid rgba(26, 10, 91, 0.1);
+}
+
+.buyer-title {
+  color: #1A0A5B;
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.buyer-refresh-btn {
+  background: #1A0A5B;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.buyer-refresh-btn:hover {
+  background: #2d0e8c;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(26, 10, 91, 0.3);
+}
+
+.buyer-table-wrapper {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+}
+
+.buyer-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.buyer-table th {
+  background: #1A0A5B;
+  color: white;
+  text-align: left;
+  padding: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.buyer-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #eef2ff;
+}
+
+.buyer-table tr:last-child td {
+  border-bottom: none;
+}
+
+.buyer-table tbody tr {
+  transition: background 0.2s ease;
+}
+
+.buyer-table tbody tr:hover {
+  background: rgba(26, 10, 91, 0.05);
+}
+
+.buyer-empty {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+  font-style: italic;
+}
+
+.buyer-loading, .buyer-error {
+  text-align: center;
+  padding: 2rem;
+  font-size: 1.1rem;
+}
+
+.buyer-loading {
+  color: #1A0A5B;
+  font-weight: 500;
+}
+
+.buyer-error {
+  color: #d32f2f;
+  background: #ffebee;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+/* ✅ Added styling for the smaller date text */
+.buyer-date-sub {
+  font-size: 12px;
+  color: #555;
+  display: block;
+  margin-top: 4px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .buyer-container {
+    padding: 1rem;
+    margin: 1rem;
+  }
+
+  .buyer-header-row {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .buyer-table {
+    font-size: 0.9rem;
+  }
+
+  .buyer-table th, .buyer-table td {
+    padding: 0.7rem 0.5rem;
+  }
+}
+/* ===========================
+   SEARCH BAR
+=========================== */
+.buyer-search-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.buyer-search-input {
+  width: 50%;
+  padding: 12px 16px;
+  border: 1px solid #dcdcdc;
+  border-radius: 12px 0 0 12px;
+  font-size: 14px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  outline: none;
+  transition: border-color 0.3s ease;
+  background: white;
+}
+
+.buyer-search-input:focus {
+  border-color: #1A0A5B;
+  box-shadow: 0 0 0 2px rgba(26, 10, 91, 0.2);
+}
+
+.buyer-search-button {
+  padding: 12px 16px;
+  background: #1A0A5B;
+  color: white;
+  border: none;
+  border-radius: 0 12px 12px 0;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.3s ease;
+}
+
+.buyer-search-button:hover {
+  background: #2d0e8c;
+}
+
+/* Responsive adjustments for search */
+@media (max-width: 768px) {
+  .buyer-search-input {
+    width: 70%;
+  }
+}
+
+@media (max-width: 480px) {
+  .buyer-search-container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .buyer-search-input {
+    width: 90%;
+    border-radius: 12px;
+    margin-bottom: 10px;
+  }
+
+  .buyer-search-button {
+    width: 90%;
+    border-radius: 12px;
+  }
+}
