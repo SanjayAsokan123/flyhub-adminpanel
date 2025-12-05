@@ -1,6 +1,7 @@
-import DroneRental from "../models/Buyer_booking_Drone_rental.model.js";
+import DroneRental from "../models/Buyer_Booking_Drone_Rental.model.js";
 import { Rental } from "../models/Rental.model.js";
 import { Seller } from "../models/Seller.model.js";
+
 
 export const droneRentalBookingResolvers = {
   Query: {

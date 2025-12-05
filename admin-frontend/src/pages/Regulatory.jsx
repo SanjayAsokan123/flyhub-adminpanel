@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import "../styles/Regulatory.css";
 
 const GRAPHQL_URL = "http://127.0.0.1:5001/graphql";
+const UPLOAD_URL = "http://127.0.0.1:5001/upload"; // <-- Firebase upload endpoint
 
 function RegulatoryPage() {
   const [title, setTitle] = useState("");
@@ -14,10 +15,11 @@ function RegulatoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch all submissions
+  // ------------------ Fetch All Records ------------------
   useEffect(() => {
     const fetchSubmissions = async () => {
       setLoading(true);
+
       const query = `
         query {
           regulatoryAll {
@@ -31,20 +33,21 @@ function RegulatoryPage() {
           }
         }
       `;
+
       try {
-        const response = await fetch(GRAPHQL_URL, {
+        const res = await fetch(GRAPHQL_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query }),
         });
-        const result = await response.json();
+
+        const result = await res.json();
 
         if (result.errors) {
           setError(result.errors[0].message);
         } else {
-          // Filter out null entries
           const filtered = result.data.regulatoryAll.filter(
-            (entry) => entry && entry.id && entry.title
+            (entry) => entry && entry.id
           );
           setSubmissions(filtered);
         }
@@ -58,7 +61,38 @@ function RegulatoryPage() {
     fetchSubmissions();
   }, []);
 
-  // Add or Update submission
+  // ------------------ Image Upload Handler ------------------
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder", "regulatory");
+
+    try {
+      const res = await fetch(UPLOAD_URL, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.success && data.url) {
+        setImagePath(data.url);
+        alert("✅ Image uploaded successfully!");
+      } else {
+        alert("❌ Upload failed!");
+      }
+    } catch (err) {
+      alert("❌ Upload error: " + err.message);
+    }
+  };
+
+  // Escape GraphQL string safely
+  const safe = (str = "") =>
+    str.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
+
+  // ------------------ Submit Create / Update ------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return alert("Title is required!");
@@ -69,11 +103,11 @@ function RegulatoryPage() {
           updateRegulatory(
             id: "${editMode}",
             input: {
-              title: "${title.replace(/"/g, '\\"')}",
+              title: "${safe(title)}",
               date: "${date}",
-              imagePath: "${imagePath.replace(/"/g, '\\"')}",
-              shortDescription: "${shortDescription.replace(/"/g, '\\"')}",
-              fullDescription: "${fullDescription.replace(/"/g, '\\"')}"
+              imagePath: "${safe(imagePath)}",
+              shortDescription: "${safe(shortDescription)}",
+              fullDescription: "${safe(fullDescription)}"
             }
           ) {
             id
@@ -90,11 +124,11 @@ function RegulatoryPage() {
         mutation {
           createRegulatory(
             input: {
-              title: "${title.replace(/"/g, '\\"')}",
+              title: "${safe(title)}",
               date: "${date}",
-              imagePath: "${imagePath.replace(/"/g, '\\"')}",
-              shortDescription: "${shortDescription.replace(/"/g, '\\"')}",
-              fullDescription: "${fullDescription.replace(/"/g, '\\"')}"
+              imagePath: "${safe(imagePath)}",
+              shortDescription: "${safe(shortDescription)}",
+              fullDescription: "${safe(fullDescription)}"
             }
           ) {
             id
@@ -109,12 +143,13 @@ function RegulatoryPage() {
       `;
 
     try {
-      const response = await fetch(GRAPHQL_URL, {
+      const res = await fetch(GRAPHQL_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: mutation }),
       });
-      const result = await response.json();
+
+      const result = await res.json();
 
       if (result.errors) return setError(result.errors[0].message);
 
@@ -122,38 +157,43 @@ function RegulatoryPage() {
         ? result.data.updateRegulatory
         : result.data.createRegulatory;
 
-      if (newEntry && newEntry.id) {
-        setSubmissions((prev) =>
-          editMode
-            ? prev.map((item) => (item.id === editMode ? newEntry : item))
-            : [newEntry, ...prev]
-        );
-      }
+      setSubmissions((prev) =>
+        editMode
+          ? prev.map((x) => (x.id === editMode ? newEntry : x))
+          : [newEntry, ...prev]
+      );
 
-      // Reset form
-      setTitle("");
-      setDate("");
-      setImagePath("");
-      setShortDescription("");
-      setFullDescription("");
-      setEditMode(null);
+      resetForm();
     } catch (err) {
-      alert("Network error: " + err.message);
+      alert("❌ Network error: " + err.message);
     }
   };
 
-  const handleEdit = (entry) => {
-    if (!entry || !entry.id) return;
-    setEditMode(entry.id);
-    setTitle(entry.title || "");
-    setDate(entry.date || "");
-    setImagePath(entry.imagePath || "");
-    setShortDescription(entry.shortDescription || "");
-    setFullDescription(entry.fullDescription || "");
+  // ------------------ Reset Form ------------------
+  const resetForm = () => {
+    setTitle("");
+    setDate("");
+    setImagePath("");
+    setShortDescription("");
+    setFullDescription("");
+    setEditMode(null);
   };
 
+  // ------------------ Edit Entry ------------------
+  const handleEdit = (entry) => {
+    setEditMode(entry.id);
+    setTitle(entry.title);
+    setDate(entry.date);
+    setImagePath(entry.imagePath);
+    setShortDescription(entry.shortDescription);
+    setFullDescription(entry.fullDescription);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // ------------------ Delete Entry ------------------
   const handleDelete = async (id) => {
-    if (!id) return;
+    if (!window.confirm("Delete this regulatory record?")) return;
+
     const mutation = `
       mutation {
         deleteRegulatory(id: "${id}") {
@@ -161,25 +201,29 @@ function RegulatoryPage() {
         }
       }
     `;
+
     try {
       await fetch(GRAPHQL_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: mutation }),
       });
-      setSubmissions(submissions.filter((entry) => entry && entry.id !== id));
+
+      setSubmissions(submissions.filter((x) => x.id !== id));
     } catch (err) {
-      alert("Delete failed: " + err.message);
+      alert("❌ Delete failed: " + err.message);
     }
   };
 
-  if (loading) return <p>Loading...</p>;
+  // ------------------ UI ------------------
+  if (loading) return <p>Loading regulatory data...</p>;
   if (error) return <p className="error-text">Error: {error}</p>;
 
   return (
     <div className="regulatory-page">
       <h2>📜 Regulatory Submissions</h2>
 
+      {/* ------------------ FORM ------------------ */}
       <form className="regulatory-form" onSubmit={handleSubmit}>
         <div className="form-group">
           <label>Title *</label>
@@ -198,20 +242,20 @@ function RegulatoryPage() {
         </div>
 
         <div className="form-group">
-          <label>Image URL</label>
-          <input
-            type="text"
-            placeholder="Enter image URL"
-            value={imagePath}
-            onChange={(e) => setImagePath(e.target.value)}
-          />
+          <label>Upload Image</label>
+          <input type="file" accept="image/*" onChange={handleFileUpload} />
+
+          {imagePath && (
+            <div className="image-preview">
+              <img src={imagePath} alt="preview" />
+            </div>
+          )}
         </div>
 
         <div className="form-group">
           <label>Short Description</label>
           <input
             type="text"
-            placeholder="Enter short description"
             value={shortDescription}
             onChange={(e) => setShortDescription(e.target.value)}
           />
@@ -220,32 +264,41 @@ function RegulatoryPage() {
         <div className="form-group">
           <label>Full Description</label>
           <textarea
-            placeholder="Enter full description..."
+            rows="4"
             value={fullDescription}
             onChange={(e) => setFullDescription(e.target.value)}
-            rows="4"
           />
         </div>
 
-        <button type="submit" className="submit-btn">{editMode ? "Update" : "Submit"}</button>
+        <button type="submit" className="submit-btn">
+          {editMode ? "Update" : "Submit"}
+        </button>
       </form>
 
+      {/* ------------------ LIST ------------------ */}
       <div className="submissions-list">
-        {submissions.map((entry) =>
-          entry && entry.id ? (
-            <div key={entry.id} className="submission-card">
-              {entry.imagePath && <img src={entry.imagePath} alt={entry.title || "Untitled"} />}
-              <h3>{entry.title || "Untitled"}</h3>
-              {entry.date && <span className="submission-date">{entry.date}</span>}
-              <p><strong>Short:</strong> {entry.shortDescription || "-"}</p>
-              <p><strong>Full:</strong> {entry.fullDescription || "-"}</p>
-              <div className="actions">
-                <button className="edit-btn" onClick={() => handleEdit(entry)}>✏ Edit</button>
-                <button className="delete-btn" onClick={() => handleDelete(entry.id)}>🗑 Delete</button>
-              </div>
+        {submissions.map((entry) => (
+          <div key={entry.id} className="submission-card">
+            {entry.imagePath && (
+              <img src={entry.imagePath} alt={entry.title} />
+            )}
+
+            <h3>{entry.title}</h3>
+            {entry.date && <span className="submission-date">{entry.date}</span>}
+
+            <p><strong>Short:</strong> {entry.shortDescription}</p>
+            <p><strong>Full:</strong> {entry.fullDescription}</p>
+
+            <div className="actions">
+              <button className="edit-btn" onClick={() => handleEdit(entry)}>
+                ✏ Edit
+              </button>
+              <button className="delete-btn" onClick={() => handleDelete(entry.id)}>
+                🗑 Delete
+              </button>
             </div>
-          ) : null
-        )}
+          </div>
+        ))}
       </div>
     </div>
   );

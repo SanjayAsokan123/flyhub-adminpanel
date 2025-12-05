@@ -11,9 +11,9 @@ export default function JobApplicationsList() {
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState("newest");
   const [page, setPage] = useState(1);
+
   const PAGE_SIZE = 6;
 
-  // Fetch Job Applications
   const fetchApplications = async () => {
     setLoading(true);
     setError(null);
@@ -22,11 +22,14 @@ export default function JobApplicationsList() {
       query GetJobApplications {
         getJobApplications {
           id
+          buyerId
+          jobId
           name
           email
           phoneNumber
           resumeUrl
           status
+          appliedAt
           createdAt
         }
       }
@@ -40,7 +43,6 @@ export default function JobApplicationsList() {
       });
 
       const json = await res.json();
-      console.log("GraphQL response:", json);
 
       if (json.errors) {
         setError(json.errors[0].message);
@@ -50,7 +52,6 @@ export default function JobApplicationsList() {
       }
     } catch (err) {
       setError("Network Error: " + err.message);
-      setApplications([]);
     }
 
     setLoading(false);
@@ -60,7 +61,6 @@ export default function JobApplicationsList() {
     fetchApplications();
   }, []);
 
-  // Filter + Sort
   const processed = applications
     .filter((app) => {
       const q = query.toLowerCase();
@@ -68,14 +68,17 @@ export default function JobApplicationsList() {
         app.name.toLowerCase().includes(q) ||
         app.email.toLowerCase().includes(q) ||
         app.phoneNumber.toLowerCase().includes(q) ||
-        app.status.toLowerCase().includes(q)
+        app.status.toLowerCase().includes(q) ||
+        app.jobId.toLowerCase().includes(q)
       );
     })
     .sort((a, b) => {
       if (sortKey === "newest")
         return new Date(b.createdAt) - new Date(a.createdAt);
+
       if (sortKey === "oldest")
         return new Date(a.createdAt) - new Date(b.createdAt);
+
       if (sortKey === "status") return a.status.localeCompare(b.status);
       return 0;
     });
@@ -88,13 +91,12 @@ export default function JobApplicationsList() {
 
   return (
     <div className="job-applications-root">
-      {/* HEADER */}
       <header className="job-applications-header">
         <h1>Job Applications</h1>
 
         <div className="job-applications-actions">
           <input
-            placeholder="Search name, email, phone, status..."
+            placeholder="Search name, email, phone, status, jobId..."
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -112,25 +114,32 @@ export default function JobApplicationsList() {
         </div>
       </header>
 
-      {/* LIST */}
       <main className="job-applications-list">
         {visible.length === 0 ? (
           <div className="empty">No applications found.</div>
         ) : (
           visible.map((app) => (
-            <article key={app._id} className="job-application-item">
+            <article key={app.id} className="job-application-item">
               <div>
-                <strong>{app.name}</strong> ({app.email})<br />
-                📞 {app.phoneNumber}<br />
+                <strong>{app.name}</strong> ({app.email}) <br />
+                📞 {app.phoneNumber} <br />
+                👤 Buyer ID: {app.buyerId} <br />
+                🆔 Job ID: {app.jobId} <br />
+                <br />
                 Status:{" "}
-                <span
-                  className={`status ${app.status.toLowerCase()}`}
-                >
-                  {app.status}
+                <span className={`status ${app.status.toLowerCase()}`}>
+                  {app.status.toUpperCase()}
                 </span>
                 <br />
                 Applied On:{" "}
-                {new Date(app.createdAt).toLocaleString("en-IN")}
+                {app.appliedAt
+                  ? new Date(app.appliedAt).toLocaleString("en-IN")
+                  : "-"}
+                <br />
+                Created On:{" "}
+                {app.createdAt
+                  ? new Date(app.createdAt).toLocaleString("en-IN")
+                  : "-"}
               </div>
 
               <div>
@@ -147,7 +156,6 @@ export default function JobApplicationsList() {
         )}
       </main>
 
-      {/* PAGINATION */}
       <footer className="job-applications-footer">
         <div>
           Showing <strong>{processed.length}</strong> applications

@@ -55,7 +55,7 @@ async function resolveFirebaseUid(buyer) {
       await createLoginIndex({
         uid: buyer.firebaseUid,
         email: buyer.email,
-        phone: buyer.phoneNumber,
+        phoneNumber: buyer.phoneNumber,
         buyerId: buyer.buyerId,
       });
     }

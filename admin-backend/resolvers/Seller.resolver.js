@@ -3,23 +3,31 @@ import { Seller } from "../models/Seller.model.js";
 import { sendSellerStatusMail } from "../utils/emailService.js";
 import { createSellerNotification } from "../utils/createSellerNotification.js";
 import { createLoginIndex, deleteLoginIndex } from "../utils/loginIndex.js";
-import admin, { auth, firestore } from "../config/firebaseAdmin.js";
-
+import admin, { auth, firestore } from "../config/firebaseAdmin.js"; // ✅ Correct imports
+import {sendPushNotification} from "../utils/SendPushNotification.js"; // ✅ Correct import"
 const messaging = admin.messaging();
 
+/* -------------------------
+   Helpers
+------------------------- */
 
 function isValidEmail(email) {
   if (!email) return false;
+  // simple RFC-like check (not exhaustive)
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 function normalizeAddresses(value) {
+  // Accept either array or single string. Ensure array-of-strings in DB.
   if (!value) return [];
   if (Array.isArray(value)) return value.map((v) => String(v).trim()).filter(Boolean);
-
+  // single string -> wrap
   return [String(value).trim()];
 }
 
+/* -----------------------------------------------------------
+   HELPER: SEND FCM PUSH NOTIFICATION
+------------------------------------------------------------ */
 async function sendPushToSeller(tokens, status, customId) {
   if (!tokens || tokens.length === 0) return;
 
@@ -45,9 +53,7 @@ async function sendPushToSeller(tokens, status, customId) {
 
   try {
     const response = await messaging.sendEachForMulticast(message);
-    console.log(
-      `📩 FCM sent: ${response.successCount} successes, ${response.failureCount} failures.`
-    );
+   
 
     if (response.failureCount > 0) {
       const failedTokens = [];
@@ -55,36 +61,46 @@ async function sendPushToSeller(tokens, status, customId) {
         if (!resp.success) failedTokens.push(tokens[idx]);
       });
       console.log("⚠ Failed tokens:", failedTokens);
-
+      // Optionally: schedule cleanup of failed tokens
     }
   } catch (error) {
     console.error("❌ Error sending FCM:", error);
   }
 }
 
+/* -----------------------------------------------------------
+   HELPER: Resolve Firebase UID
+   - Try email -> phone lookups via Admin SDK
+   - Persist loginIndex if resolved
+------------------------------------------------------------ */
 async function resolveAndPersistFirebaseUid(seller) {
   try {
     if (!seller) return null;
 
     if (seller.firebaseUid) return seller.firebaseUid;
 
+    // Try to resolve from email
     if (seller.email && isValidEmail(seller.email)) {
       try {
         const userRecord = await auth.getUserByEmail(seller.email);
         if (userRecord?.uid) seller.firebaseUid = userRecord.uid;
       } catch (err) {
+        // ignore not-found errors
       }
     }
 
+    // Try to resolve from phone
     if (!seller.firebaseUid && seller.phoneNumber) {
       try {
         const userRecord = await auth.getUserByPhoneNumber(seller.phoneNumber);
         if (userRecord?.uid) seller.firebaseUid = userRecord.uid;
       } catch (err) {
+        // ignore not-found errors
       }
     }
 
     if (seller.firebaseUid) {
+      // Persist only when changed
       if (seller.isModified && typeof seller.save === "function") {
         try {
           await seller.save();
@@ -114,6 +130,9 @@ async function resolveAndPersistFirebaseUid(seller) {
   }
 }
 
+/* -----------------------------------------------------------
+   EXPORT: resolvers
+------------------------------------------------------------ */
 export const sellerResolvers = {
   Query: {
     getSellers: async () => {
@@ -152,6 +171,7 @@ export const sellerResolvers = {
       let seller = await Seller.findOne(query);
 
       if (!seller) {
+        // build a safe auto email only if necessary
         const autoEmail =
           (email && isValidEmail(email)) ||
           (username ? `${username}@autogen.flyhub` : null) ||
@@ -179,7 +199,7 @@ export const sellerResolvers = {
   },
 
   Mutation: {
-        createSeller: async (_, { input }, { pubsub }) => {
+    createSeller: async (_, { input }, { pubsub }) => {
       if (!input.name?.trim()) throw new Error("Name required");
       if (!input.companyName?.trim()) throw new Error("companyName required");
 
@@ -194,6 +214,7 @@ export const sellerResolvers = {
       if (email && !isValidEmail(email))
         throw new Error("Invalid email format");
 
+      // Normalize addresses
       const shippingAddresses = normalizeAddresses(input.shippingAddresses);
       const pickupAddresses = normalizeAddresses(input.pickupAddresses);
 
@@ -217,6 +238,7 @@ export const sellerResolvers = {
         fcmTokens: [],
       };
 
+      // Add FCM token
       if (input.fcmToken) {
         sellerDoc.fcmTokens.push(String(input.fcmToken).trim());
       }
@@ -241,9 +263,9 @@ export const sellerResolvers = {
       } catch (err) {
         throw new Error("Failed to create seller: " + err.message);
       }
-       },
+    },
 
-        updateSellerFcmToken: async (_, { customId, token }) => {
+    updateSellerFcmToken: async (_, { customId, token }) => {
       if (!customId || !token) {
         return { success: false, message: "customId and token are required", seller: null };
       }
@@ -261,8 +283,8 @@ export const sellerResolvers = {
         console.warn("⚠ updateSellerFcmToken failed:", err.message || err);
         return { success: false, message: "Failed to update token", seller: null };
       }
-       },
-        changeSellerStatus: async (_, { customId, status }, { pubsub }) => {
+    },
+    changeSellerStatus: async (_, { customId, status }, { pubsub }) => {
       const valid = ["pending", "approved", "rejected"];
       status = status.trim().toLowerCase();
 
@@ -274,11 +296,31 @@ export const sellerResolvers = {
 
       seller.status = status;
       await seller.save();
-
+     if(!seller || !seller.fcmTokens)
+     {
+     console.log("Seller as no token");
+     return seller;
+     }
+     if(status==="approved")
+     {
+     await sendPushNotification(
+     seller.fcmTokens,
+     "Seller approved",
+     "Explore your profile page and Thank you"
+     );
+     }
+     else if(status==="approved")
+          {
+          await sendPushNotification(
+          seller.fcmTokens,
+          "Seller rejected",
+          "Please contact admin for more info"
+          );
+          }
       const uid = await resolveAndPersistFirebaseUid(seller);
 
       if (uid) {
-        await firestore.collection("users").doc(uid).set(
+        await firestore.collection("sellers").doc(uid).set(
           {
             status,
             sellerStatus: status,
@@ -298,34 +340,34 @@ export const sellerResolvers = {
         });
       } catch {}
 
-      // 🔔 FCM PUSH NOTIFICATION (MISSING EARLIER)
-      if (seller.fcmTokens && seller.fcmTokens.length > 0) {
-        await sendPushToSeller(seller.fcmTokens, status, customId);
-      }
+//      // 🔔 FCM PUSH NOTIFICATION (MISSING EARLIER)
+//      if (seller.fcmTokens && seller.fcmTokens.length > 0) {
+//        await sendPushToSeller(seller.fcmTokens, status, customId);
+//      }
 
       // 🔥 GraphQL subscription notification
-      await createSellerNotification({
-        sellerId: seller.customId,
-        title:
-          status === "approved"
-            ? "Seller Approved"
-            : status === "rejected"
-            ? "Seller Rejected"
-            : "Status Updated",
-        message:
-          status === "approved"
-            ? "Your seller account is approved."
-            : status === "rejected"
-            ? "Your seller account was rejected."
-            : "Your status was updated.",
-        type: "seller_status",
-        data: { customId, status },
-        url: "/seller/dashboard",
-        pubsub,
-      });
+//      await createSellerNotification({
+//        sellerId: seller.customId,
+//        title:
+//          status === "approved"
+//            ? "Seller Approved"
+//            : status === "rejected"
+//            ? "Seller Rejected"
+//            : "Status Updated",
+//        message:
+//          status === "approved"
+//            ? "Your seller account is approved."
+//            : status === "rejected"
+//            ? "Your seller account was rejected."
+//            : "Your status was updated.",
+//        type: "seller_status",
+//        data: { customId, status },
+//        url: "/seller/dashboard",
+//        pubsub,
+//      });
 
       return seller;
-            },
+    },
 
         deleteSeller: async (_, { customId }, { pubsub }) => {
               const seller =
@@ -356,43 +398,11 @@ export const sellerResolvers = {
                 message: `Seller ${customId} deleted.`,
                 type: "seller_deleted",
                 data: { customId },
-                url: "/admin/sellers",
+                url: `/admin/sellers`,
                 pubsub,
               });
 
               return seller;
             },
-
-        updateSellerFcmToken: async (_, { customId, token }) => {
-      const seller = await Seller.findOne({ customId });
-      if (!seller) throw new Error("Seller not found");
-
-      await seller.addFcmToken(token);
-
-      return {
-        success: true,
-        message: "Token updated",
-        seller,
-      };
-            },
-
-        markSellerNotificationRead: async (_, { notificationId }) => {
-      await SellerNotification.findOneAndUpdate(
-        { notificationId },
-        { read: true }
-      );
-
-      return {
-        success: true,
-        message: "Notification marked as read",
-      };
-            },
-  },
-
-   Subscription: {
-    sellerNotificationAdded: {
-      subscribe: (_, { sellerId }, { pubsub }) =>
-        pubsub.subscribe(SELLER_NOTIFICATION_TOPIC),
-    },
   },
 };

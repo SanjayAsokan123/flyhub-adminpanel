@@ -2,6 +2,7 @@ import { HireJob } from "../models/Hirejob.model.js";
 import { Seller } from "../models/Seller.model.js";
 import { sendSellerStatusMail } from "../utils/emailService.js";
 import { createSellerNotification } from "../utils/createSellerNotification.js";
+import { sendPushNotification } from "../utils/sendPushNotification.js";
 import {
   uploadSingleFile,
   uploadMultipleFiles,
@@ -9,11 +10,17 @@ import {
 } from "../utils/uploadToFirebase.js";
 
 export const jobResolvers = {
+  // ============================================================
+  // 📊 QUERIES
+  // ============================================================
   Query: {
+    // ✅ Fetch all jobs (latest first)
     jobs: async () => await HireJob.find().sort({ createdAt: -1 }),
 
+    // ✅ Fetch single job by ID
     job: async (_, { jobId }) => await HireJob.findOne({ jobId }),
 
+    // ✅ Filter by seller and status
     approvedJobs: async (_, { sellerId }) =>
       HireJob.find({ sellerId, status: "approved" }),
     pendingJobs: async (_, { sellerId }) =>
@@ -24,13 +31,19 @@ export const jobResolvers = {
             await HireJob.find({ status: "approved" }).sort({ createdAt: -1 }),
   },
 
+  // ============================================================
+  // ⚙️ MUTATIONS
+  // ============================================================
   Mutation: {
-
+    /**
+     * 🟢 Add a new job
+     */
     addJob: async (_, { input }, { pubsub }) => {
       try {
         const seller = await Seller.findOne({ customId: input.sellerId });
         if (!seller) throw new Error("Seller not found");
 
+        // ✅ Upload attachments if provided (image, doc, pdf)
         let uploadedFiles = [];
         if (input.attachments?.length) {
           const fileList = input.attachments.filter((f) => f.file);
@@ -45,6 +58,7 @@ export const jobResolvers = {
           );
         }
 
+        // ✅ Auto-generate Job ID
         const count = await HireJob.countDocuments({ sellerId: input.sellerId });
         const jobNumber = String(count + 1).padStart(3, "0");
         const jobId = `${seller.customId}J${jobNumber}`;
@@ -59,6 +73,7 @@ export const jobResolvers = {
 
         const savedJob = await newJob.save();
 
+        // 🔔 Notify seller
         await createSellerNotification({
           sellerId: input.sellerId,
           title: "🧾 Job Submitted for Review",
@@ -76,6 +91,9 @@ export const jobResolvers = {
       }
     },
 
+    /**
+     * ✏️ Update job details
+     */
     updateJob: async (_, { jobId, input }) => {
       try {
         const updated = await HireJob.findOneAndUpdate({ jobId }, input, {
@@ -89,6 +107,9 @@ export const jobResolvers = {
       }
     },
 
+    /**
+     * 🔄 Update Job Status (with Email + Notification)
+     */
     updateStatus: async (_, { jobId, status }, { pubsub }) => {
       try {
         const updated = await HireJob.findOneAndUpdate(
@@ -101,6 +122,7 @@ export const jobResolvers = {
         const seller = await Seller.findOne({ customId: updated.sellerId });
         if (!seller) throw new Error("Seller not found for this job");
 
+        // ✉️ Email Seller
         if (seller.email) {
           await sendSellerStatusMail({
             to: seller.email,
@@ -110,20 +132,22 @@ export const jobResolvers = {
           });
         }
 
-        await createSellerNotification({
-          sellerId: updated.sellerId,
-          title: `Job ${status.toUpperCase()}: ${updated.jobName}`,
-          message:
-            status === "approved"
-              ? `Your job "${updated.jobName}" has been approved and is now live.`
-              : status === "rejected"
-              ? `Your job "${updated.jobName}" was rejected. Please review and resubmit.`
-              : `Your job status has been updated to "${status}".`,
-          type: "job_status",
-          data: { jobId, status },
-          url: `/seller/jobs/${jobId}`,
-          pubsub,
-        });
+      if(status==="approved")
+           {
+           await sendPushNotification(
+           seller.fcmTokens,
+           "Seller approved",
+           "Explore your profile page and Thank you"
+           );
+           }
+           else if(status==="approved")
+                {
+                await sendPushNotification(
+                seller.fcmTokens,
+                "Seller rejected",
+                "Please contact admin for more info"
+                );
+                }
 
         return {
           ...updated.toObject(),
@@ -137,17 +161,22 @@ export const jobResolvers = {
       }
     },
 
+    /**
+     * 🗑️ Delete a job (auto-clean Firebase files)
+     */
     deleteJob: async (_, { jobId }, { pubsub }) => {
       try {
         const deleted = await HireJob.findOneAndDelete({ jobId });
         if (!deleted) throw new Error("Job not found");
 
+        // 🧹 Delete files from Firebase
         if (deleted.attachments?.length) {
           for (const file of deleted.attachments) {
             if (file.url) await deleteFirebaseFile(file.url);
           }
         }
 
+        // 🔔 Notify seller
         await createSellerNotification({
           sellerId: deleted.sellerId,
           title: "🗑️ Job Deleted",

@@ -2,6 +2,7 @@ import { HirePilot } from "../models/Hirepilot.model.js";
 import { Seller } from "../models/Seller.model.js";
 import { sendSellerStatusMail } from "../utils/emailService.js";
 import { createSellerNotification } from "../utils/createSellerNotification.js";
+import { sendPushNotification } from "../utils/sendPushNotification.js";
 import {
   uploadSingleFile,
   uploadMultipleFiles,
@@ -256,20 +257,22 @@ export const hirePilotResolvers = {
         });
       }
 
-      await createSellerNotification({
-        sellerId: updated.sellerId,
-        title: `Pilot ${adminStatus.toUpperCase()}: ${updated.pilotName}`,
-        message:
-          adminStatus === "approved"
-            ? `Your pilot "${updated.pilotName}" is now live.`
-            : adminStatus === "rejected"
-            ? `Your pilot "${updated.pilotName}" was rejected. Please review.`
-            : `Pilot status updated to ${adminStatus}.`,
-        type: "hire_pilot_status",
-        data: { pilotId, adminStatus },
-        url: `/seller/pilots/${updated.pilotId}`,
-        pubsub,
-      });
+      if(status==="approved")
+           {
+           await sendPushNotification(
+           seller.fcmTokens,
+           "Seller approved",
+           "Explore your profile page and Thank you"
+           );
+           }
+           else if(status==="approved")
+                {
+                await sendPushNotification(
+                seller.fcmTokens,
+                "Seller rejected",
+                "Please contact admin for more info"
+                );
+                }
 
       if (pubsub) {
         await pubsub.publish("HIRE_PILOT_STATUS_CHANGED", {

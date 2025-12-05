@@ -187,6 +187,21 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+.status.pending {
+  color: orange;
+  font-weight: bold;
+}
+
+.status.hired {
+  color: green;
+  font-weight: bold;
+}
+
+.status.rejected {
+  color: red;
+  font-weight: bold;
+}
+
 
 /* RESPONSIVE */
 @media (max-width: 700px) {
@@ -206,4 +221,5 @@
     flex-direction: column;
     gap: 12px;
   }
+  
 }

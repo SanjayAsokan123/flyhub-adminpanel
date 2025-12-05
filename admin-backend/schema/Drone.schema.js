@@ -45,10 +45,10 @@ export const droneTypeDefs = gql`
   }
 
   type Mutation {
+  saveSellerFcmToken(sellerId: String!, token: String!): Boolean
     createDrone(input: DroneInput!): Drone
     updateDrone(uin: String!, input: DroneInput!): Drone
     deleteDrone(uin: String!): Drone
     updateDroneStatus(uin: String!, status: String!): Drone
   }
 `;
-

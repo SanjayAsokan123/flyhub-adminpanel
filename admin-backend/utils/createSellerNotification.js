@@ -1,6 +1,6 @@
 import { SellerNotification } from "../models/SellerNotification.model.js";
 import { Seller } from "../models/Seller.model.js";
-import { sendPushNotification } from "./pushNotification.js";
+import { sendPushNotification } from "./SendPushNotification.js";
 import { v4 as uuidv4 } from "uuid";
 
 export const SELLER_NOTIFICATION_TOPIC = "SELLER_NOTIFICATION_ADDED";

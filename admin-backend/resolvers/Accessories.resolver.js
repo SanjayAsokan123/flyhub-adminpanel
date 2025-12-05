@@ -4,8 +4,15 @@ import { Seller } from "../models/Seller.model.js";
 import { sendSellerStatusMail } from "../utils/emailService.js";
 import { createSellerNotification } from "../utils/createSellerNotification.js";
 import {calculateFinalPrice} from "../utils/TaxCalculator.js";
+import { sendPushNotification } from "../utils/sendPushNotification.js";
 export const accessoryResolvers = {
+  // ============================================================
+  // 📊 QUERIES
+  // ============================================================
   Query: {
+    /**
+     * 🧾 Fetch all accessories (with seller info)
+     */
     accessories: async () => {
       try {
         const accessories = await Accessory.find().sort({ createdAt: -1 });
@@ -29,6 +36,10 @@ export const accessoryResolvers = {
         throw new Error("Failed to fetch accessories: " + error.message);
       }
     },
+
+    /**
+     * 🎯 Fetch a single accessory by ID
+     */
     accessory: async (_, { accessoryId }) => {
       try {
         const accessory = await Accessory.findOne({ accessoryId });
@@ -50,53 +61,25 @@ export const accessoryResolvers = {
       }
     },
 
-    rejectedAccessories: async () => {
-      const accessories = await Accessory.find({ status: "rejected" });
-      return Promise.all(
-        accessories.map(async (a) => {
-          const seller = await Seller.findOne({ customId: a.sellerId });
-          return {
-            ...a.toObject(),
-            sellerInfo: seller
-              ? { email: seller.email, phoneNumber: seller.phoneNumber }
-              : null,
-          };
-        })
-      );
-    },
+    /**
+     * 📦 Status-based filters
+     */
+    rejectedAccessories: async (_, { sellerId }) =>
+       Accessory.find({ sellerId, status: "rejected" }),
 
-    approvedAccessories: async (_, { sellerId }) => {
-      const accessories = await Accessory.find({ sellerId, status: "approved" });
-      return Promise.all(
-        accessories.map(async (a) => {
-          const seller = await Seller.findOne({ customId: a.sellerId });
-          return {
-            ...a.toObject(),
-            sellerInfo: seller
-              ? { email: seller.email, phoneNumber: seller.phoneNumber }
-              : null,
-          };
-        })
-      );
-    },
-
-    pendingAccessories: async (_, { sellerId }) => {
-      const accessories = await Accessory.find({ sellerId, status: "pending" });
-      return Promise.all(
-        accessories.map(async (a) => {
-          const seller = await Seller.findOne({ customId: a.sellerId });
-          return {
-            ...a.toObject(),
-            sellerInfo: seller
-              ? { email: seller.email, phoneNumber: seller.phoneNumber }
-              : null,
-          };
-        })
-      );
-    },
+    approvedAccessories: async (_, { sellerId }) =>
+      Accessory.find({ sellerId, status: "approved" }),
+    pendingAccessories: async (_, { sellerId }) =>
+      Accessory.find({ sellerId, status: "pending" }),
   },
 
+  // ============================================================
+  // ⚙️ MUTATIONS
+  // ============================================================
   Mutation: {
+    /**
+     * 🟢 Create new accessory listing
+     */
     createAccessory: async (_, { input }, { pubsub }) => {
       try {
         const seller = await Seller.findOne({ customId: input.sellerId });
@@ -116,8 +99,10 @@ export const accessoryResolvers = {
           status: "pending",
           sellerId: input.sellerId,
         });
+
         const saved = await newAccessory.save();
 
+        // 🔔 Notify seller about submission
         await createSellerNotification({
           sellerId: input.sellerId,
           title: "Accessory Submitted for Review",
@@ -141,6 +126,9 @@ export const accessoryResolvers = {
       }
     },
 
+    /**
+     * ✏️ Update accessory details
+     */
     updateAccessory: async (_, { accessoryId, input }) => {
       try {
         const updated = await Accessory.findOneAndUpdate(
@@ -167,6 +155,10 @@ export const accessoryResolvers = {
       }
     },
 
+    /**
+     * 🔄 Update accessory status (pending/approved/rejected)
+     * + Notify seller via email and in-app
+     */
     updateAccessoryStatus: async (_, { accessoryId, status }, { pubsub }) => {
       try {
         const validStatuses = ["pending", "approved", "rejected"];
@@ -182,6 +174,7 @@ export const accessoryResolvers = {
 
         const seller = await Seller.findOne({ customId: updated.sellerId });
 
+        // ✉️ Send Email Notification
         if (seller?.email) {
           try {
             await sendSellerStatusMail({
@@ -195,24 +188,22 @@ export const accessoryResolvers = {
           }
         }
 
-        try {
-          await createSellerNotification({
-            sellerId: updated.sellerId,
-            title: `Accessory ${status.toUpperCase()}: ${updated.name}`,
-            message:
-              status === "approved"
-                ? `Your accessory "${updated.name}" has been approved and is now live on Flyhub.`
-                : status === "rejected"
-                ? `Your accessory "${updated.name}" was rejected. Please check details and resubmit.`
-                : `Status updated to ${status} for "${updated.name}".`,
-            type: "accessory_status",
-            data: { accessoryId: updated.accessoryId, status },
-            url: `/seller/accessories/${updated.accessoryId}`,
-            pubsub,
-          });
-        } catch (notifErr) {
-          console.error("⚠️ createSellerNotification failed:", notifErr);
-        }
+       if(status==="approved")
+            {
+            await sendPushNotification(
+            seller.fcmTokens,
+            "Seller approved",
+            "Explore your profile page and Thank you"
+            );
+            }
+            else if(status==="approved")
+                 {
+                 await sendPushNotification(
+                 seller.fcmTokens,
+                 "Seller rejected",
+                 "Please contact admin for more info"
+                 );
+                 }
 
         return {
           ...updated.toObject(),
@@ -229,6 +220,9 @@ export const accessoryResolvers = {
       }
     },
 
+    /**
+     * 🗑️ Delete Accessory
+     */
     deleteAccessory: async (_, { accessoryId }, { pubsub }) => {
       try {
         const deleted = await Accessory.findOneAndDelete({ accessoryId });
@@ -236,6 +230,7 @@ export const accessoryResolvers = {
 
         const seller = await Seller.findOne({ customId: deleted.sellerId });
 
+        // 🔔 Optional: Notify seller of deletion
         await createSellerNotification({
           sellerId: deleted.sellerId,
           title: `Accessory Deleted`,

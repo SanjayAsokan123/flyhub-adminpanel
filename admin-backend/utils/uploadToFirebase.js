@@ -38,9 +38,10 @@ export const uploadSingleFile = async (file, folder = "uploads") => {
       gzip: true,
     });
 
-    const publicUrl = `https:
-      bucket.name
-    }/o/${encodeURIComponent(fileName)}?alt=media&token=${uniqueId}`;
+const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(
+  fileName
+)}?alt=media&token=${uniqueId}`;
+
 
     console.log(`✅ Uploaded: ${fileName}`);
     return publicUrl;

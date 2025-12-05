@@ -1,8 +1,7 @@
 import mongoose from "mongoose";
 import { Training } from "../models/Training.model.js";
-import { Seller } from "../models/Seller.model.js";
-import { createSellerNotification } from "../utils/createSellerNotification.js";
-import { sendSellerStatusMail, sendEnrollmentEmails } from "../utils/emailService.js";
+import { TrainingEnroll } from "../models/TrainingEnroll.model.js";
+import { sendEnrollmentEmails } from "../utils/emailService.js";
 import { uploadSingleFile, deleteFirebaseFile } from "../utils/uploadToFirebase.js";
 
 export const trainingResolvers = {
@@ -19,6 +18,7 @@ export const trainingResolvers = {
         throw new Error("Failed to fetch trainings: " + err.message);
       }
     },
+
     getTrainingById: async (_, { id }) => {
       try {
         const training = await Training.findById(id);
@@ -29,13 +29,24 @@ export const trainingResolvers = {
         throw new Error("Failed to fetch training: " + err.message);
       }
     },
+
     getEnrollments: async () => {
       try {
-        const enrollments = await TrainingEnroll.find().sort({ createdAt: -1 });
-        return enrollments;
+        return await TrainingEnroll.find().sort({ createdAt: -1 });
       } catch (err) {
         console.error("❌ Error fetching enrollments:", err);
         throw new Error("Failed to fetch enrollments: " + err.message);
+      }
+    },
+
+    getTrainingBanners: async () => {
+      try {
+        return await Training.find({}, { title: 1, imagePath: 1 })
+          .sort({ createdAt: -1 })
+          .limit(10);
+      } catch (err) {
+        console.error("❌ Error fetching training banners:", err);
+        throw new Error("Failed to fetch training banners: " + err.message);
       }
     },
   },
@@ -56,6 +67,7 @@ export const trainingResolvers = {
         }
 
         const totalAmount = amount + (amount * gst) / 100;
+
         const newTraining = new Training({
           title,
           amount,
@@ -70,41 +82,6 @@ export const trainingResolvers = {
         const saved = await newTraining.save();
         console.log(`✅ Training added: ${saved.title}`);
 
-        const sellers = await Seller.find({});
-        await Promise.all(
-          sellers.map(async (seller) => {
-if (createSellerNotification && typeof createSellerNotification === "function") {
-  await createSellerNotification({
-    sellerId: "ADMIN",
-    title: "🆕 New Training Added",
-    message: `Admin added a new training course: "${saved.title}".`,
-    type: "admin_training_log",
-    data: { trainingId: saved._id },
-    url: `/admin/trainings/${saved._id}`,
-    pubsub,
-  });
-}
-            if (seller.email) {
-              await sendSellerStatusMail({
-                to: seller.email,
-                productType: "Training Program",
-                productName: saved.title,
-                status: "added",
-              });
-            }
-          })
-        );
-
-        await createSellerNotification({
-          sellerId: "ADMIN",
-          title: "🆕 New Training Added",
-          message: `Admin added a new training course: "${saved.title}".`,
-          type: "admin_training_log",
-          data: { trainingId: saved._id },
-          url: `/admin/trainings/${saved._id}`,
-          pubsub,
-        });
-
         return saved;
       } catch (err) {
         console.error("❌ Error adding training:", err);
@@ -112,94 +89,36 @@ if (createSellerNotification && typeof createSellerNotification === "function") 
       }
     },
 
-    updateTraining: async (_, { id, imageFile, ...fields }, { pubsub }) => {
+    updateTraining: async (_, { id, imageFile, ...fields }) => {
       try {
         const existing = await Training.findById(id);
         if (!existing) throw new Error("Training not found");
 
-        // ✅ Handle image replacement
         if (imageFile?.file) {
           if (existing.imagePath) {
             await deleteFirebaseFile(existing.imagePath);
           }
           fields.imagePath = await uploadSingleFile(imageFile.file, "training");
         }
+
         if (fields.amount && fields.gst) {
           fields.totalAmount = fields.amount + (fields.amount * fields.gst) / 100;
         }
 
         Object.assign(existing, fields);
-        const updated = await existing.save();
-        console.log(`✏️ Training updated: ${updated.title}`);
-
-        const sellers = await Seller.find({});
-       await Promise.all(
-         sellers.map(async (seller) => {
-           if (!seller.customId) {
-             console.warn(`⚠️ Skipping seller without customId: ${seller.email}`);
-             return;
-           }
-
-           await createSellerNotification({
-             sellerId: seller.customId,
-             title: "🛠 Training Updated",
-             message: `The training program "${updated.title}" has been updated.`,
-             type: "training_update",
-             data: { trainingId: updated._id },
-             url: `/training/${updated._id}`,
-             pubsub,
-           });
-
-           if (seller.email) {
-             await sendSellerStatusMail({
-               to: seller.email,
-               productType: "Training Program",
-               productName: updated.title,
-               status: "updated",
-             });
-           }
-         })
-       );
-
-
-        return updated;
+        return await existing.save();
       } catch (err) {
         console.error("❌ Error updating training:", err);
         throw new Error("Failed to update training: " + err.message);
       }
     },
 
-    deleteTraining: async (_, { id }, { pubsub }) => {
+    deleteTraining: async (_, { id }) => {
       try {
         const deleted = await Training.findByIdAndDelete(id);
         if (!deleted) throw new Error("Training not found");
 
         if (deleted.imagePath) await deleteFirebaseFile(deleted.imagePath);
-        console.log(`🗑 Training deleted: ${deleted.title}`);
-
-        const sellers = await Seller.find({});
-        await Promise.all(
-          sellers.map(async (seller) => {
-            await createSellerNotification({
-              sellerId: seller.customId,
-              title: "🗑 Training Removed",
-              message: `The training program "${deleted.title}" has been removed.`,
-              type: "training_deleted",
-              data: { trainingId: id },
-              url: `/training`,
-              pubsub,
-            });
-
-            if (seller.email) {
-              await sendSellerStatusMail({
-                to: seller.email,
-                productType: "Training Program",
-                productName: deleted.title,
-                status: "deleted",
-              });
-            }
-          })
-        );
 
         return "Training deleted successfully!";
       } catch (err) {
@@ -210,11 +129,10 @@ if (createSellerNotification && typeof createSellerNotification === "function") 
 
     enrollTraining: async (_, { input }) => {
       try {
-        console.log("📥 Enrollment request received:", input);
-
         if (!input.courseId || !mongoose.Types.ObjectId.isValid(input.courseId)) {
           throw new Error("Invalid or missing courseId.");
         }
+
         const course = await Training.findById(input.courseId);
         if (!course) throw new Error("Training not found for provided ID.");
 
@@ -225,6 +143,7 @@ if (createSellerNotification && typeof createSellerNotification === "function") 
           totalAmount: course.totalAmount,
           status: "pending",
         });
+
         await sendEnrollmentEmails({
           studentName: input.name,
           studentEmail: input.email,
@@ -233,7 +152,6 @@ if (createSellerNotification && typeof createSellerNotification === "function") 
           totalAmount: course.totalAmount,
         });
 
-        console.log(`✅ Enrollment successful for ${input.name}`);
         return enrollment;
       } catch (err) {
         console.error("❌ Error enrolling student:", err);

@@ -2,6 +2,7 @@ import { Service } from "../models/Service.model.js";
 import { Seller } from "../models/Seller.model.js";
 import { sendSellerStatusMail } from "../utils/emailService.js";
 import { createSellerNotification } from "../utils/createSellerNotification.js";
+import { sendPushNotification } from "../utils/sendPushNotification.js";
 import {
   uploadSingleFile,
   deleteFirebaseFile,
@@ -9,6 +10,9 @@ import {
 
 export const serviceResolvers = {
   Query: {
+    /**
+     * 🟢 Get all services with seller info
+     */
     services: async () => {
       try {
         const services = await Service.find().sort({ createdAt: -1 });
@@ -28,6 +32,10 @@ export const serviceResolvers = {
         throw new Error("Failed to fetch services: " + error.message);
       }
     },
+
+    /**
+     * 🟢 Get single service by serviceId
+     */
     service: async (_, { serviceId }) => {
       try {
         const s = await Service.findOne({ serviceId });
@@ -45,6 +53,10 @@ export const serviceResolvers = {
         throw new Error("Failed to fetch service: " + error.message);
       }
     },
+
+    /**
+     * 🟡 Filtered queries
+     */
     approvedServices: async (_, { sellerId }) =>
       Service.find({ sellerId, status: "approved" }),
     pendingServices: async (_, { sellerId }) =>
@@ -54,6 +66,9 @@ export const serviceResolvers = {
   },
 
   Mutation: {
+    /**
+     * 🟢 Create new service (with Firebase upload)
+     */
     createService: async (_, { input }, { pubsub }) => {
       try {
         const allowedFields = [
@@ -70,9 +85,13 @@ export const serviceResolvers = {
         const data = Object.fromEntries(
           Object.entries(input).filter(([key]) => allowedFields.includes(key))
         );
+
+        // ✅ Upload new image to Firebase if provided
         if (input.imageFile?.file) {
           data.image = await uploadSingleFile(input.imageFile.file, "services");
         }
+
+        // Generate serviceId
         const count = await Service.countDocuments();
         data.serviceId = count + 1;
         data.status = "pending";
@@ -82,6 +101,7 @@ export const serviceResolvers = {
 
         const saved = await new Service(data).save();
 
+        // 🔔 Notify Seller
         await createSellerNotification({
           sellerId: seller.customId,
           title: "🛠️ New Service Added",
@@ -92,6 +112,7 @@ export const serviceResolvers = {
           pubsub,
         });
 
+        // 🔔 Notify Admin
         await createSellerNotification({
           sellerId: "ADMIN",
           title: "🆕 New Service Pending Review",
@@ -115,6 +136,9 @@ export const serviceResolvers = {
       }
     },
 
+    /**
+     * ✏️ Update service (Firebase image support + cleanup)
+     */
     updateService: async (_, { serviceId, input }) => {
       try {
         const allowedFields = [
@@ -136,6 +160,7 @@ export const serviceResolvers = {
         const existing = await Service.findOne({ serviceId });
         if (!existing) throw new Error("Service not found");
 
+        // ✅ Handle Firebase image replacement
         if (input.imageFile?.file) {
           if (existing.image) {
             await deleteFirebaseFile(existing.image);
@@ -167,7 +192,9 @@ export const serviceResolvers = {
       }
     },
 
-
+    /**
+     * 🔄 Update service approval status (Admin action)
+     */
     updateServiceStatus: async (_, { serviceId, status }, { pubsub }) => {
       try {
         const validStatuses = ["pending", "approved", "rejected"];
@@ -186,6 +213,7 @@ export const serviceResolvers = {
 
         const seller = await Seller.findOne({ customId: updated.sellerId });
 
+        // 📨 Email
         if (seller?.email) {
           await sendSellerStatusMail({
             to: seller.email,
@@ -195,35 +223,24 @@ export const serviceResolvers = {
           });
         }
 
-        await createSellerNotification({
-          sellerId: updated.sellerId,
-          title:
-            status === "approved"
-              ? "✅ Service Approved"
-              : status === "rejected"
-              ? "❌ Service Rejected"
-              : "ℹ️ Service Status Updated",
-          message:
-            status === "approved"
-              ? `Your service "${updated.name}" has been approved and is now live.`
-              : status === "rejected"
-              ? `Your service "${updated.name}" was rejected. Please review and resubmit.`
-              : `Your service "${updated.name}" is now marked as "${status}".`,
-          type: "service_status",
-          data: { serviceId, status },
-          url: `/seller/services/${serviceId}`,
-          pubsub,
-        });
+        if(status==="approved")
+             {
+             await sendPushNotification(
+             seller.fcmTokens,
+             "Seller approved",
+             "Explore your profile page and Thank you"
+             );
+             }
+             else if(status==="approved")
+                  {
+                  await sendPushNotification(
+                  seller.fcmTokens,
+                  "Seller rejected",
+                  "Please contact admin for more info"
+                  );
+                  }
 
-        await createSellerNotification({
-          sellerId: "ADMIN",
-          title: "🛠️ Service Status Changed",
-          message: `Service "${updated.name}" (${serviceId}) marked as ${status}.`,
-          type: "service_status_admin",
-          data: { serviceId, status },
-          url: `/admin/services/${serviceId}`,
-          pubsub,
-        });
+
 
         return {
           ...updated.toObject(),
@@ -237,18 +254,22 @@ export const serviceResolvers = {
       }
     },
 
-
+    /**
+     * 🗑 Delete service (Firebase cleanup)
+     */
     deleteService: async (_, { serviceId }, { pubsub }) => {
       try {
         const deleted = await Service.findOneAndDelete({ serviceId });
         if (!deleted) throw new Error("Service not found");
 
+        // ✅ Delete image from Firebase if exists
         if (deleted.image) {
           await deleteFirebaseFile(deleted.image);
         }
 
         const seller = await Seller.findOne({ customId: deleted.sellerId });
 
+        // 🔔 Notify Seller
         await createSellerNotification({
           sellerId: deleted.sellerId,
           title: "🗑️ Service Deleted",

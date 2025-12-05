@@ -12,7 +12,7 @@ const rentalSchema = new mongoose.Schema(
 
     rentalDate: { type: Date, required: true },
 
-    rentalId: { type: String, required: true },
+    rentalId: { type: String, required: true }, // seller listing id
 
     sellerId: {
       type: String,
@@ -26,6 +26,7 @@ const rentalSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Auto-generate ID like DR1, DR2, DR3...
 rentalSchema.pre("save", async function (next) {
   if (this.drone_rental_id) return next();
   const last = await this.constructor

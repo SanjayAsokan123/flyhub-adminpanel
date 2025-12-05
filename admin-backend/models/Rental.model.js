@@ -31,7 +31,7 @@ const rentalSchema = new mongoose.Schema(
 );
 rentalSchema.statics.getWithSellerInfo = async function () {
   const rentals = await this.find();
-  const sellers = await mongoose.model("Seller").find();
+  const sellers = await mongoose.model("Newseller").find();
 
   return rentals.map((r) => {
     const s = sellers.find((sel) => sel.customId === r.sellerId);
@@ -49,7 +49,7 @@ rentalSchema.pre("save", async function (next) {
   try {
     if (this.isNew && !this.rentalId && this.sellerId) {
       const seller = await mongoose
-        .model("Seller")
+        .model("Newseller")
         .findOne({ customId: this.sellerId });
 
       if (!seller) throw new Error("Seller not found");

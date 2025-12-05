@@ -1,6 +1,8 @@
 import { gql } from "apollo-server-express";
 
 export const trainingTypeDefs = gql`
+  scalar Date
+
   type Training {
     id: ID!
     title: String!
@@ -8,11 +10,11 @@ export const trainingTypeDefs = gql`
     gst: Float!
     days: Int!
     totalAmount: Float!
-    imagePath: String       # Firebase Storage URL
+    imagePath: String
     shortDescription: String
     fullDescription: String
-    createdAt: String
-    updatedAt: String
+    createdAt: Date
+    updatedAt: Date
   }
 
   type TrainingEnroll {
@@ -29,8 +31,8 @@ export const trainingTypeDefs = gql`
     isHaveLicence: Boolean
     isAbove18: Boolean
     status: String
-    createdAt: String
-    updatedAt: String
+    createdAt: Date
+    updatedAt: Date
   }
 
   input TrainingEnrollInput {
@@ -44,10 +46,19 @@ export const trainingTypeDefs = gql`
     isAbove18: Boolean
   }
 
+ type TrainingBanner {
+    id: ID!
+    title: String!
+    imagePath: String
+  }
+
+
+
   type Query {
     getTrainings(search: String, sortOrder: String): [Training]
     getTrainingById(id: ID!): Training
     getEnrollments: [TrainingEnroll]
+    getTrainingBanners: [TrainingBanner]
   }
 
   type Mutation {

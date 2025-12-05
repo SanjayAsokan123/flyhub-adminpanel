@@ -54,6 +54,7 @@ const trainingSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Auto-calc on save
 trainingSchema.pre("save", function (next) {
   if (this.amount != null && this.gst != null) {
     this.totalAmount = this.amount + (this.amount * this.gst) / 100;
@@ -61,14 +62,29 @@ trainingSchema.pre("save", function (next) {
   next();
 });
 
+// Auto-calc on update
 trainingSchema.pre("findOneAndUpdate", function (next) {
   const update = this.getUpdate();
-  if (update.amount != null && update.gst != null) {
-    update.totalAmount = update.amount + (update.amount * update.gst) / 100;
+
+  const amount = update.amount ?? update.$set?.amount;
+  const gst = update.gst ?? update.$set?.gst;
+
+  if (amount != null && gst != null) {
+    const totalAmount = amount + (amount * gst) / 100;
+
+    if (update.$set) {
+      update.$set.totalAmount = totalAmount;
+    } else {
+      update.totalAmount = totalAmount;
+    }
   }
+
   next();
 });
 
+// Text search
 trainingSchema.index({ title: "text", shortDescription: "text" });
 
-export const Training = mongoose.model("Training", trainingSchema);
+// Safe export
+export const Training =
+  mongoose.models.Training || mongoose.model("Training", trainingSchema);
