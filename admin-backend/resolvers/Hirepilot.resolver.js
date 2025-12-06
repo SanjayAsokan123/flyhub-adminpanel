@@ -2,7 +2,7 @@ import { HirePilot } from "../models/Hirepilot.model.js";
 import { Seller } from "../models/Seller.model.js";
 import { sendSellerStatusMail } from "../utils/emailService.js";
 import { createSellerNotification } from "../utils/createSellerNotification.js";
-import { sendPushNotification } from "../utils/sendPushNotification.js";
+import { sendPushNotification } from "../utils/SendPushNotification.js";
 import {
   uploadSingleFile,
   uploadMultipleFiles,
@@ -77,11 +77,6 @@ export const hirePilotResolvers = {
     approvedHirePilotsByStatus: async () =>
       HirePilot.aggregate([{ $match: { adminStatus: /^approved$/i } }, ...baseLookup]),
 
-    myPilotBookings: async (_, { buyerEmail }) =>
-      PilotBooking.find({ buyerEmail }).sort({ createdAt: -1 }),
-
-    pilotBookings: async (_, { pilotId }) =>
-      PilotBooking.find({ pilotId }).sort({ createdAt: -1 }),
 
   },
 
@@ -135,79 +130,7 @@ export const hirePilotResolvers = {
     },
 
 
-    bookPilot: async (_, { input }, { pubsub }) => {
-      const { pilotId, buyerName, buyerEmail, contact, location, date, startTime, endTime } = input;
-      const pilot = await HirePilot.findOne({ pilotId });
-      if (!pilot) throw new Error("Pilot not found");
-
-      const bookingDoc = new PilotBooking({
-        pilotId,
-        pilotRef: pilot._id,
-        buyerName,
-        buyerEmail,
-        contact,
-        location,
-        date,
-        startTime,
-        endTime,
-        status: "pending",
-      });
-      await bookingDoc.save();
-
-      pilot.bookings = pilot.bookings || [];
-      pilot.bookings.push({
-        buyerName,
-        buyerEmail,
-        contact,
-        location,
-        date,
-        startTime,
-        endTime,
-        bookingId: bookingDoc._id.toString(),
-        createdAt: new Date(),
-      });
-      await pilot.save();
-
-      await createSellerNotification({
-        sellerId: pilot.sellerId,
-        title: `📅 New Booking for ${pilot.pilotName}`,
-        message: `${buyerName} booked your pilot for ${date} (${startTime} - ${endTime}).`,
-        type: "hire_pilot_booking",
-        data: { pilotId, bookingId: bookingDoc._id.toString() },
-        url: `/seller/pilots/${pilot.pilotId}/bookings/${bookingDoc._id.toString()}`,
-        pubsub,
-      });
-
-      const seller = await Seller.findOne({ customId: pilot.sellerId });
-      if (seller?.email) {
-        await sendSellerStatusMail({
-          to: seller.email,
-          productType: "Hire Pilot Booking",
-          productName: `${pilot.pilotName} — Booking by ${buyerName}`,
-          status: "booked",
-        });
-      }
-
-      if (pubsub) {
-        await pubsub.publish("NEW_PILOT_BOOKING", {
-          newPilotBooking: {
-            bookingId: bookingDoc._id.toString(),
-            pilotId,
-            buyerName,
-            date,
-            startTime,
-            endTime,
-          },
-        });
-      }
-
-      return {
-        success: true,
-        message: `Pilot ${pilot.pilotName} booked successfully!`,
-        booking: bookingDoc,
-      };
-    },
-
+    
     deleteHirePilot: async (_, { pilotId }, { pubsub }) => {
       try {
         const deleted = await HirePilot.findOneAndDelete({ pilotId });
@@ -323,10 +246,6 @@ export const hirePilotResolvers = {
   },
 
   Subscription: {
-    newPilotBooking: {
-      subscribe: (_, __, { pubsub }) =>
-      pubsub.asyncIterator("NEW_PILOT_BOOKING"),
-    },
     hirePilotStatusChanged: {
       subscribe: (_, __, { pubsub }) =>
         pubsub.asyncIterator("HIRE_PILOT_STATUS_CHANGED"),

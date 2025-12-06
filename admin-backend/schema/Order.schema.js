@@ -7,6 +7,7 @@ export const orderTypeDefs = gql`
     email: String
     phone: String
     address: String
+    sellerId: String
   }
 
   type Item {
@@ -15,6 +16,7 @@ export const orderTypeDefs = gql`
     name: String
     price: Float
     quantity: Int
+    sellerId: String
   }
 
   type Payment {
@@ -52,20 +54,25 @@ export const orderTypeDefs = gql`
   }
 
   extend type Query {
+    """Fetch all orders"""
     orders: [Order]
 
-    order(orderId: String!): Order
+    """Fetch specific order by ID"""
+    order(orderId: String!): Order   # ✅ Added this
   }
 
   extend type Mutation {
+    """Create a new order"""
     createOrder(
       buyerData: BuyerInput!
       items: [ItemInput!]!
       paymentData: PaymentInput!
     ): Order
 
+    """Update buyer info"""
     updateOrder(orderId: String!, address: String, phone: String): Order
 
+    """Delete an order"""
     deleteOrder(orderId: String!): Order
   }
 `;

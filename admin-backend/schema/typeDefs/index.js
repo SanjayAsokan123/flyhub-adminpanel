@@ -9,6 +9,7 @@ import { rentalBookingTypeDefs }  from "../Buyer_Booking_Pilot_Rental.schema.js"
 import { dronerentalBookingTypeDefs } from "../Buyer_Booking_Drone_Rental.schema.js";
 import { jobApplicationTypeDefs } from "../JobBooking.schema.js";
 import { hirePilotTypeDefs } from "../Hirepilot.schema.js";
+import { pilotBookingTypeDefs } from "../Pilot_Booking.schema.js";
 import { jobTypeDefs } from "../Hirejob.schema.js";
 import { orderTypeDefs } from "../Order.schema.js";
 import { returnTypeDefs } from "../Return.schema.js";
@@ -27,6 +28,7 @@ export const typeDefs = [
   accessoryTypeDefs,
   rentalTypeDefs,
   hirePilotTypeDefs,
+  pilotBookingTypeDefs,
   jobTypeDefs,
   orderTypeDefs,
   returnTypeDefs,

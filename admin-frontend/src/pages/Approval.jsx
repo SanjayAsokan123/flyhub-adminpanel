@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from "react";
-import "../styles/Approve.css"; // Create similar CSS as Rejected.css
-
+import "../styles/Approve.css";
 const GRAPHQL_URL = "http://127.0.0.1:5001/graphql";
 
 function Approval() {
-  const [activeType, setActiveType] = useState("drone"); // drone / accessory / part
+  const [activeType, setActiveType] = useState("drone");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch pending items
   const fetchPendingItems = async (type) => {
     setLoading(true);
     setError(null);

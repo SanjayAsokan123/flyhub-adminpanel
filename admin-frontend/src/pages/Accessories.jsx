@@ -9,9 +9,8 @@ function Accessories() {
   const [error, setError] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [updatingStatus, setUpdatingStatus] = useState({ id: null, status: null });
-  const [searchTerm, setSearchTerm] = useState(""); // New state for search term
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // Fetch all accessories
   const fetchAccessories = async () => {
     setLoading(true);
     setError(null);
@@ -64,14 +63,10 @@ function Accessories() {
 
     setLoading(false);
   };
-
-  // Update accessory status
   const updateAccessoryStatus = async (accessoryId, newStatus) => {
     setUpdatingStatus({ id: accessoryId, status: newStatus });
-
-    // Ensure accessoryId is a string and newStatus is properly formatted
     const formattedAccessoryId = String(accessoryId);
-    const formattedStatus = newStatus.toLowerCase(); // Ensure lowercase
+    const formattedStatus = newStatus.toLowerCase();
 
     const mutation = `
       mutation UpdateAccessoryStatus($accessoryId: String!, $status: String!) {
@@ -107,7 +102,6 @@ function Accessories() {
         console.error("GraphQL Errors:", result.errors);
         setError(result.errors[0].message);
       } else {
-        // Update local state to reflect the change
         setAccessories(prevAccessories =>
           prevAccessories.map(acc =>
             acc.accessoryId === accessoryId
@@ -128,7 +122,6 @@ function Accessories() {
     fetchAccessories();
   }, []);
 
-  // Filter accessories based on selected status and search term
   const filteredAccessories = accessories.filter(acc => {
     const matchesStatus = selectedStatus === "all" ||
                          acc.status.toLowerCase() === selectedStatus;

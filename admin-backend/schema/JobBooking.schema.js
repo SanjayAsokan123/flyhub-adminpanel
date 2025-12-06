@@ -64,9 +64,9 @@ extend type Query {
   getRejectedApplications(sellerId: String!): [JobApplication!]!
   getHiredApplications(sellerId: String!): [JobApplication!]!
 
-  getBuyerPendingApplications(buyerId: String!): [JobApplication]
-  getBuyerRejectedApplications(buyerId: String!): [JobApplication]
-  getBuyerHiredApplications(buyerId: String!): [JobApplication]
+  getBuyerPendingApplications(buyerId: String): [JobApplication]
+  getBuyerRejectedApplications(buyerId: String): [JobApplication]
+  getBuyerHiredApplications(buyerId: String): [JobApplication]
 
   buyerJobApplyStatus(buyerId: String!): [JobApplicationSummary!]!
   getApplicationById(id: ID!): JobApplication

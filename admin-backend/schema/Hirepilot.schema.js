@@ -30,8 +30,8 @@ export const hirePilotTypeDefs = gql`
     certifications: [Certification!]!
     resume: File!
     description: String
-    newemail: String
-    newphoneNumber: String
+    email: String
+    phoneNumber: String
     adminStatus: String
     buyerStatus: String
     seller: Seller
@@ -68,31 +68,6 @@ export const hirePilotTypeDefs = gql`
     description: String
   }
 
-  type PilotBooking {
-    id: ID!
-    pilotId: ID!
-    buyerName: String!
-    buyerEmail: String
-    contact: String!
-    location: String!
-    date: String!
-    startTime: String!
-    endTime: String!
-    status: String
-    createdAt: String
-    updatedAt: String
-  }
-
-  input BookPilotInput {
-    pilotId: ID!
-    buyerName: String!
-    buyerEmail: String
-    contact: String!
-    location: String!
-    date: String!
-    startTime: String!
-    endTime: String!
-  }
 
   type BookPilotResponse {
     success: Boolean!
@@ -129,9 +104,6 @@ export const hirePilotTypeDefs = gql`
 
     approvedHirePilotsByStatus: [HirePilot]
 
-    myPilotBookings(buyerEmail: String!): [PilotBooking!]
-
-    pilotBookings(pilotId: ID!): [PilotBooking!]
   }
 
   extend type Mutation {
@@ -139,7 +111,6 @@ export const hirePilotTypeDefs = gql`
 
     updateHirePilot(pilotId: String!, input: HirePilotInput!): HirePilot!
 
-    bookPilot(input: BookPilotInput!): BookPilotResponse!
 
     adminUpdateHirePilotStatus(pilotId: String!, adminStatus: String!): HirePilot!
 
@@ -148,7 +119,6 @@ export const hirePilotTypeDefs = gql`
     deleteHirePilot(pilotId: String!): HirePilot!
   }
   extend type Subscription {
-    newPilotBooking: NewPilotBooking
     hirePilotStatusChanged: HirePilotStatusChange
   }
 

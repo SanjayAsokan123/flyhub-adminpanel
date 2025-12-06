@@ -6,11 +6,14 @@ const returnRequestSchema = new mongoose.Schema(
     orderId: { type: String, required: true },
     productId: { type: String, required: true },
     type: { type: String, required: true },
-    sellerId: { type: String },
-    buyerId: { type: String },
     reason: { type: String, required: true },
     deliveryDate: { type: String, required: true },
-    status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
+    proofUrl: { type: String },
+    status: {
+      type: String,
+      enum: ["requested", "approved", "rejected", "completed"],
+      default: "requested",
+    },
   },
   { timestamps: true }
 );

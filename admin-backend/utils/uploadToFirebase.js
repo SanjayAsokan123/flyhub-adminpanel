@@ -27,8 +27,6 @@ export const uploadSingleFile = async (file, folder = "uploads") => {
     const safeName = file.originalname.replace(/[^\w.\-]+/g, "_");
     const fileName = `${folder}/${uniqueId}_${safeName}`;
     const blob = bucket.file(fileName);
-
-    // ✅ Upload to Firebase Storage
     await blob.save(file.buffer, {
       metadata: {
         contentType: file.mimetype,

@@ -1,11 +1,11 @@
 import mongoose from "mongoose";
 import { Rental } from "./Rental.model.js";
 import { Seller } from "./Seller.model.js";
-
+import { Buyer } from "./Buyer.model.js";
 const rentalSchema = new mongoose.Schema(
   {
     drone_rental_id: { type: String, unique: true, index: true },
-
+buyerId: { type: String, required: true },
     name: { type: String, required: true },
     phone: { type: String, required: true },
     location: { type: String, required: true },
@@ -18,7 +18,10 @@ const rentalSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-
+   buyerId: {
+         type: String,
+         required: true,
+       },
     sellerEmail: { type: String },
     sellerPhone: { type: String },
     status: { type: String, default: "pending" },

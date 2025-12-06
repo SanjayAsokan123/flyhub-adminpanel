@@ -6,10 +6,8 @@ const rentalSchema = new mongoose.Schema(
     name: { type: String, required: true },
     brand: String,
     location: String,
-
     pricePerHour: Number,
     pricePerDay: Number,
-
     description: String,
     image: String,
     quantity: { type: Number, default: 1 },
@@ -21,7 +19,6 @@ const rentalSchema = new mongoose.Schema(
       enum: ["pending", "approved", "rejected"],
       default: "pending",
     },
-
     sellerId: {
       type: String,
       required: true,

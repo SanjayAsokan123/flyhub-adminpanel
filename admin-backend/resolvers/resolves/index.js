@@ -6,6 +6,7 @@ import { jobApplicationResolvers } from "../JobBooking.resolver.js";
 import { rentalBookingResolvers } from "../Buyer_Booking_Pilot_Rental.resolver.js";
 import { droneRentalBookingResolvers } from "../Buyer_Booking_Drone_Rental.resolver.js";
 import { hirePilotResolvers } from "../Hirepilot.resolver.js";
+import { pilotBookingResolvers } from "../Pilot_Booking.resolver.js";
 import { jobResolvers } from "../Hirejob.resolver.js";
 import { orderResolvers } from "../Order.resolver.js";
 import { returnResolvers } from "../Return.resolver.js";
@@ -24,6 +25,7 @@ export const resolves = [
   accessoryResolvers,
   rentalResolvers,
   hirePilotResolvers,
+  pilotBookingResolvers,
   jobResolvers,
   orderResolvers,
   returnResolvers,

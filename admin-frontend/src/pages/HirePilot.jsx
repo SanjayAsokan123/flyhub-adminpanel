@@ -27,8 +27,8 @@ export default function HirePilotsDashboard() {
           specification
           description
           adminStatus
-          newemail
-          newphoneNumber
+          email
+          phoneNumber
           price { perHour perDay }
           certifications { url }
           resume { url }

@@ -2,24 +2,13 @@
 
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-
 import { Buyer } from "../models/Buyer.model.js";
 import { BuyerNotification } from "../models/BuyerNotification.model.js";
-
 import { createBuyerNotification } from "../utils/createBuyerNotification.js";
 import { BUYER_NOTIFICATION_TOPIC } from "../pubsub.js";
-
-import {
-  createLoginIndex,
-  deleteLoginIndex,
-  findLoginIndex,
-} from "../utils/loginIndex.js";
-
+import { createLoginIndex,deleteLoginIndex,findLoginIndex } from "../utils/loginIndex.js";
 import { auth } from "../config/firebaseAdmin.js";
-
 import { withFilter } from "graphql-subscriptions";
-
-/* --------------------------------- HELPERS ---------------------------------- */
 
 function normalizePhone(phone) {
   if (!phone) return "";
@@ -33,7 +22,6 @@ async function resolveFirebaseUid(buyer) {
   try {
     if (buyer.firebaseUid) return buyer.firebaseUid;
 
-    // Try by email
     if (buyer.email) {
       try {
         const u = await auth.getUserByEmail(buyer.email);
@@ -41,7 +29,6 @@ async function resolveFirebaseUid(buyer) {
       } catch {}
     }
 
-    // Try by phone
     if (!buyer.firebaseUid && buyer.phoneNumber) {
       try {
         const u = await auth.getUserByPhoneNumber("+91" + buyer.phoneNumber);
@@ -67,7 +54,6 @@ async function resolveFirebaseUid(buyer) {
   }
 }
 
-/* --------------------------------- RESOLVERS -------------------------------- */
 
 export const buyerResolvers = {
   Query: {
@@ -91,7 +77,6 @@ export const buyerResolvers = {
           buyerId ? { buyerId } : null,
         ].filter(Boolean),
       };
-
       return Buyer.findOne(query);
     },
 
@@ -107,7 +92,6 @@ export const buyerResolvers = {
   },
 
   Mutation: {
-    /* ------------------------------ SIGNUP BUYER ------------------------------ */
     signupBuyer: async (
       _,
       { name, email, phoneNumber, password, firebaseUid }
@@ -152,13 +136,9 @@ export const buyerResolvers = {
       }
     },
 
-    /* ---------------------------------- LOGIN --------------------------------- */
     loginBuyer: async (_, { input, password }) => {
       const normalized = normalizePhone(input);
-
       let buyer = null;
-
-      // Try Login Index
       const match = await findLoginIndex(
         input.includes("@") ? input : normalized
       );
@@ -188,7 +168,6 @@ export const buyerResolvers = {
       return { ...buyer.toObject(), token };
     },
 
-    /* ------------------------------ LOGIN GOOGLE ------------------------------ */
     loginBuyerGoogle: async (_, { firebaseUid }) => {
       const buyer = await Buyer.findOne({ firebaseUid });
 
@@ -204,7 +183,6 @@ export const buyerResolvers = {
       return { ...buyer.toObject(), token };
     },
 
-    /* ----------------------------- UPDATE BUYER ------------------------------- */
     updateBuyer: async (_, { buyerId, input }) => {
       const data = {};
 
@@ -226,7 +204,6 @@ export const buyerResolvers = {
       return updated;
     },
 
-    /* ----------------------------- DELETE BUYER ------------------------------- */
     deleteBuyer: async (_, { buyerId }) => {
       const buyer = await Buyer.findOne({ buyerId });
       if (!buyer) throw new Error("Buyer not found");
@@ -244,7 +221,6 @@ export const buyerResolvers = {
       return "Buyer deleted successfully.";
     },
 
-    /* ------------------------------ READ NOTIF -------------------------------- */
     markBuyerNotificationRead: async (_, { notificationId }) => {
       await BuyerNotification.findOneAndUpdate(
         { notificationId },
@@ -253,7 +229,6 @@ export const buyerResolvers = {
       return { success: true, message: "Notification marked as read" };
     },
 
-    /* ----------------------------- UPDATE FCM TOKEN --------------------------- */
     updateBuyerFcmToken: async (_, { buyerId, token }) => {
       const buyer = await Buyer.findOne({ buyerId });
       if (!buyer) throw new Error("Buyer not found");
@@ -263,7 +238,6 @@ export const buyerResolvers = {
       return { success: true, message: "Token updated", buyer };
     },
 
-    /* ------------------------------- TEST PUSH -------------------------------- */
     testPush: async () => {
       return createBuyerNotification({
         buyerId: "FLYHUBB0001",
@@ -274,7 +248,6 @@ export const buyerResolvers = {
     },
   },
 
-  /* --------------------------- SUBSCRIPTIONS ---------------------------------- */
   Subscription: {
     buyerNotificationAdded: {
       subscribe: withFilter(

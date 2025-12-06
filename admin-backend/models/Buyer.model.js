@@ -31,6 +31,7 @@ const BuyerSchema = new mongoose.Schema(
       trim: true,
       index: true,
       sparse: true,
+      unique: true,
     },
 
     password: String,
@@ -51,7 +52,6 @@ async function getNextSequence(prefix) {
   return ret.seq;
 }
 
-// Auto-generate buyerId
 BuyerSchema.pre("save", async function (next) {
   if (this.isNew && !this.buyerId) {
     const seq = await getNextSequence("FLYHUBB");

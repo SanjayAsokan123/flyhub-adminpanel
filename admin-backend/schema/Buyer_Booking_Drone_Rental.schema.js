@@ -12,17 +12,28 @@ export const dronerentalBookingTypeDefs = gql`
     sellerEmail: String
     sellerPhone: String
     status: String
+    buyerId:String!
     createdAt: String
     updatedAt: String
   }
+type Buyer
+{
+ firebaseUid: String,
+ buyerId:String,
+ name:String,
+}
 
   extend type Query {
     getAllDroneRentals: [DroneRental]
     getDroneRentalById(drone_rental_id: String!): DroneRental
     getDroneRentalsBySellerId(sellerId: String!): [DroneRental]
-    getConfirmedDroneRentals: [DroneRental]
-    getPendingDroneRentals: [DroneRental]
-    getCancelledDroneRentals: [DroneRental]
+    getDroneRentalsByBuyerId(buyerId: String!): [DroneRental]
+
+
+    getConfirmedDroneRentalsByBuyer(buyerId: String!): [DroneRental]
+    getPendingDroneRentalsByBuyer(buyerId: String!): [DroneRental]
+    getCancelledDroneRentalsByBuyer(buyerId: String!): [DroneRental]
+    getBuyerfirebaseUidInDroneRental(firebaseUid: String!): Buyer
   }
 
   extend type Mutation {
@@ -32,6 +43,7 @@ export const dronerentalBookingTypeDefs = gql`
       location: String!
       rentalDate: String!
       rentalId: String!
+      buyerId: String
     ): DroneRental
 
     updateDroneRentalContact(

@@ -4,29 +4,22 @@ import cors from "cors";
 import https from "https";
 import fs from "fs";
 import path from "path";
-
 import { ApolloServer } from "apollo-server-express";
 import { graphqlUploadExpress } from "graphql-upload";
-
 import jwt from "jsonwebtoken";
 import { mergeTypeDefs, mergeResolvers } from "@graphql-tools/merge";
 import { makeExecutableSchema } from "@graphql-tools/schema";
 import { createServer } from "http";
-
 import { WebSocketServer } from "ws";
 import { useServer } from "graphql-ws/lib/use/ws";
-
 import connectDB from "./config/db.js";
 import { verifyFirebaseToken } from "./middleware/firebaseAuth.js";
 import { pubsub } from "./pubsub.js";
-
 import multer from "multer";
 import { uploadToFirebase } from "./utils/uploadToFirebase.js";
 import sellerAuthRouter from "./routes/sellerAuth.js";
-
 import { typeDefs } from "./schema/typeDefs/index.js";
 import { resolves } from "./resolvers/resolves/index.js";
-
 import { GraphQLScalarType, Kind } from "graphql";
 
 dotenv.config();
@@ -35,24 +28,13 @@ const PORT = process.env.PORT || 5001;
 const startServer = async () => {
   try {
     const app = express();
-
-    /* -------------------------------------------------------------------------- */
-    /*                               EXPRESS SETUP                                */
-    /* -------------------------------------------------------------------------- */
     app.use(cors());
     app.use(express.json());
-    // app.use("/uploads", express.static("uploads"));
     app.use(verifyFirebaseToken);
-
     app.use("/auth", sellerAuthRouter);
-
     const storage = multer.memoryStorage();
     const upload = multer({ storage });
-
-    /* ------------------------------ HEALTH CHECK ------------------------------ */
     app.get("/healthz", (_req, res) => res.json({ ok: true }));
-
-    /* --------------------------- DIRECT FILE UPLOAD --------------------------- */
     app.post("/upload", upload.single("file"), async (req, res) => {
       try {
         if (!req.file) {
@@ -64,7 +46,6 @@ const startServer = async () => {
         const folder = req.body.folder || "hire-pilots";
         const firebaseUser = req.firebaseUser;
         const publicUrl = await uploadToFirebase(req.file, folder);
-
         console.log(
           `📤 ${firebaseUser?.email || "anonymous"} uploaded to ${folder}`
         );
@@ -79,16 +60,8 @@ const startServer = async () => {
         res.status(500).json({ success: false, message: err.message });
       }
     });
-
-    /* ----------------------------- GRAPHQL UPLOAD ----------------------------- */
     app.use(graphqlUploadExpress({ maxFileSize: 10_000_000, maxFiles: 10 }));
-
-    /* ---------------------------- CONNECT DATABASE ---------------------------- */
     await connectDB();
-
-    /* -------------------------------------------------------------------------- */
-    /*                              GRAPHQL DATE SCALAR                           */
-    /* -------------------------------------------------------------------------- */
 
     const DateScalar = new GraphQLScalarType({
       name: "Date",
@@ -104,10 +77,6 @@ const startServer = async () => {
       },
     });
 
-    /* -------------------------------------------------------------------------- */
-    /*                             MERGE TYPEDEFS/RESOLVERS                       */
-    /* -------------------------------------------------------------------------- */
-
     const baseTypeDefs = `
       scalar Date
       type Query { _empty: String }
@@ -118,7 +87,7 @@ const startServer = async () => {
     const mergedTypeDefs = mergeTypeDefs([baseTypeDefs, ...typeDefs]);
 
     const mergedResolvers = mergeResolvers([
-      { Date: DateScalar },   // <-- IMPORTANT
+      { Date: DateScalar },
       ...resolves,
     ]);
 
@@ -126,10 +95,6 @@ const startServer = async () => {
       typeDefs: mergedTypeDefs,
       resolvers: mergedResolvers,
     });
-
-    /* -------------------------------------------------------------------------- */
-    /*                              APOLLO SERVER                                 */
-    /* -------------------------------------------------------------------------- */
 
     const server = new ApolloServer({
       schema,
@@ -177,10 +142,6 @@ const startServer = async () => {
 
     await server.start();
     server.applyMiddleware({ app, path: "/graphql" });
-
-    /* -------------------------------------------------------------------------- */
-    /*                        HTTP + WEBSOCKET SERVER SETUP                       */
-    /* -------------------------------------------------------------------------- */
 
     const httpServer = createServer(app);
 

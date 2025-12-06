@@ -15,15 +15,12 @@ if (!admin.apps.length) {
     let credentials = null;
 
     const serviceAccountPath = process.env.FIREBASE_ADMIN_CREDENTIALS;
-
-    // 1️⃣ Load Service Account JSON from file (best method)
     if (serviceAccountPath && fs.existsSync(serviceAccountPath)) {
       console.log(`🔑 Using Firebase credentials from file: ${serviceAccountPath}`);
       const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf8"));
       credentials = admin.credential.cert(serviceAccount);
     }
 
-    // 2️⃣ Load credentials from environment variables (Heroku / Render / Railway)
     else if (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
       console.log("🌍 Using Firebase credentials from environment variables");
 
@@ -34,7 +31,6 @@ if (!admin.apps.length) {
       });
     }
 
-    // 3️⃣ If no credentials found
     if (!credentials) {
       console.warn("⚠️ Firebase credentials missing — Admin SDK not initialized.");
     } else {

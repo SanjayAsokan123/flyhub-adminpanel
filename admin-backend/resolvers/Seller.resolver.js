@@ -3,17 +3,13 @@ import { Seller } from "../models/Seller.model.js";
 import { sendSellerStatusMail } from "../utils/emailService.js";
 import { createSellerNotification } from "../utils/createSellerNotification.js";
 import { createLoginIndex, deleteLoginIndex } from "../utils/loginIndex.js";
-import admin, { auth, firestore } from "../config/firebaseAdmin.js"; // ✅ Correct imports
-import {sendPushNotification} from "../utils/SendPushNotification.js"; // ✅ Correct import"
+import admin, { auth, firestore } from "../config/firebaseAdmin.js";
+import {sendPushNotification} from "../utils/SendPushNotification.js";
 const messaging = admin.messaging();
 
-/* -------------------------
-   Helpers
-------------------------- */
 
 function isValidEmail(email) {
   if (!email) return false;
-  // simple RFC-like check (not exhaustive)
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
@@ -25,9 +21,6 @@ function normalizeAddresses(value) {
   return [String(value).trim()];
 }
 
-/* -----------------------------------------------------------
-   HELPER: SEND FCM PUSH NOTIFICATION
------------------------------------------------------------- */
 async function sendPushToSeller(tokens, status, customId) {
   if (!tokens || tokens.length === 0) return;
 
@@ -61,41 +54,31 @@ async function sendPushToSeller(tokens, status, customId) {
         if (!resp.success) failedTokens.push(tokens[idx]);
       });
       console.log("⚠ Failed tokens:", failedTokens);
-      // Optionally: schedule cleanup of failed tokens
     }
   } catch (error) {
     console.error("❌ Error sending FCM:", error);
   }
 }
 
-/* -----------------------------------------------------------
-   HELPER: Resolve Firebase UID
-   - Try email -> phone lookups via Admin SDK
-   - Persist loginIndex if resolved
------------------------------------------------------------- */
 async function resolveAndPersistFirebaseUid(seller) {
   try {
     if (!seller) return null;
 
     if (seller.firebaseUid) return seller.firebaseUid;
 
-    // Try to resolve from email
     if (seller.email && isValidEmail(seller.email)) {
       try {
         const userRecord = await auth.getUserByEmail(seller.email);
         if (userRecord?.uid) seller.firebaseUid = userRecord.uid;
       } catch (err) {
-        // ignore not-found errors
       }
     }
 
-    // Try to resolve from phone
     if (!seller.firebaseUid && seller.phoneNumber) {
       try {
         const userRecord = await auth.getUserByPhoneNumber(seller.phoneNumber);
         if (userRecord?.uid) seller.firebaseUid = userRecord.uid;
       } catch (err) {
-        // ignore not-found errors
       }
     }
 
@@ -130,9 +113,6 @@ async function resolveAndPersistFirebaseUid(seller) {
   }
 }
 
-/* -----------------------------------------------------------
-   EXPORT: resolvers
------------------------------------------------------------- */
 export const sellerResolvers = {
   Query: {
     getSellers: async () => {
@@ -171,7 +151,6 @@ export const sellerResolvers = {
       let seller = await Seller.findOne(query);
 
       if (!seller) {
-        // build a safe auto email only if necessary
         const autoEmail =
           (email && isValidEmail(email)) ||
           (username ? `${username}@autogen.flyhub` : null) ||
@@ -330,7 +309,6 @@ export const sellerResolvers = {
         );
       }
 
-      // ✉ Email
       try {
         await sendSellerStatusMail({
           to: seller.email,
@@ -339,32 +317,6 @@ export const sellerResolvers = {
           status,
         });
       } catch {}
-
-//      // 🔔 FCM PUSH NOTIFICATION (MISSING EARLIER)
-//      if (seller.fcmTokens && seller.fcmTokens.length > 0) {
-//        await sendPushToSeller(seller.fcmTokens, status, customId);
-//      }
-
-      // 🔥 GraphQL subscription notification
-//      await createSellerNotification({
-//        sellerId: seller.customId,
-//        title:
-//          status === "approved"
-//            ? "Seller Approved"
-//            : status === "rejected"
-//            ? "Seller Rejected"
-//            : "Status Updated",
-//        message:
-//          status === "approved"
-//            ? "Your seller account is approved."
-//            : status === "rejected"
-//            ? "Your seller account was rejected."
-//            : "Your status was updated.",
-//        type: "seller_status",
-//        data: { customId, status },
-//        url: "/seller/dashboard",
-//        pubsub,
-//      });
 
       return seller;
     },

@@ -6,24 +6,30 @@ import { Seller } from "../models/Seller.model.js";
 import { sendSellerStatusMail } from "../utils/emailService.js";
 import { createSellerNotification } from "../utils/createSellerNotification.js";
 
+
 async function getProductDetails(productId, type) {
-  try {
-    switch (type?.toLowerCase()) {
-      case "drone":
-        return await Drone.findOne({ droneId: productId }).select("name price sellerId -_id");
-      case "part":
-        return await Part.findOne({ partId: productId }).select("name price sellerId -_id");
-      case "accessory":
-        return await Accessory.findOne({ accessoryId: productId }).select("name price sellerId -_id");
-      default:
-        console.warn(`⚠️ Unknown product type: ${type}`);
-        return null;
-    }
-  } catch (error) {
-    console.error("❌ Product fetch error:", error);
-    return null;
+  switch (type?.toLowerCase()) {
+    case "drone":
+      return await Drone.findOne({ droneId: productId })
+        .select("name price sellerId")
+        .lean();
+
+    case "part":
+      return await Part.findOne({ partId: productId })
+        .select("name price sellerId")
+        .lean();
+
+    case "accessory":
+      return await Accessory.findOne({ accessoryId: productId })
+        .select("name price sellerId")
+        .lean();
+
+    default:
+      return null;
   }
 }
+
+
 
 export const orderResolvers = {
   Query: {
@@ -52,10 +58,11 @@ export const orderResolvers = {
     createOrder: async (_, { buyerData, items, paymentData }, { pubsub }) => {
       try {
         if (!buyerData?.buyerId || !buyerData?.name) {
-          throw new Error("Buyer information incomplete (buyerId, name required)");
+          throw new Error("Buyer information incomplete");
         }
+
         if (!Array.isArray(items) || items.length === 0) {
-          throw new Error("Order must contain at least one valid item");
+          throw new Error("Order must have at least one item");
         }
 
         const detailedItems = await Promise.all(
@@ -67,7 +74,7 @@ export const orderResolvers = {
               name: product?.name || "Unknown Product",
               price: product?.price || 0,
               quantity: item.quantity || 1,
-              sellerId: product?.sellerId || null,
+              sellerId: product?.sellerId,
             };
           })
         );
@@ -89,50 +96,29 @@ export const orderResolvers = {
         });
 
         await order.save();
-        console.log(`✅ Order Created: ${order.orderId}`);
 
-        const sellerIds = [
-          ...new Set(detailedItems.map((i) => i.sellerId).filter(Boolean)),
-        ];
+        const sellerIds = [...new Set(detailedItems.map(i => i.sellerId).filter(Boolean))];
         const sellers = await Seller.find({ customId: { $in: sellerIds } });
 
         for (const seller of sellers) {
-          try {
-            if (seller.email) {
-              await sendSellerStatusMail({
-                to: seller.email,
-                productType: "Order",
-                productName: `New Order from ${buyerData.name}`,
-                status: "new",
-              });
-            }
-
-            await createSellerNotification({
-              sellerId: seller.customId,
-              title: "🛒 New Order Received",
-              message: `You have a new order from ${buyerData.name}. Total ₹${totalAmount}.`,
-              type: "new_order",
-              data: { orderId: order.orderId, total: totalAmount },
-              url: `/seller/orders/${order.orderId}`,
-              pubsub,
+          if (seller.email) {
+            await sendSellerStatusMail({
+              to: seller.email,
+              productType: "Order",
+              productName: `New Order from ${buyerData.name}`,
+              status: "new",
             });
-          } catch (err) {
-            console.error("⚠️ Seller notification error:", err);
           }
-        }
 
-        try {
           await createSellerNotification({
-            sellerId: buyerData.buyerId,
-            title: "✅ Order Confirmed",
-            message: `Your order #${order.orderId} was placed successfully. Total ₹${totalAmount}.`,
-            type: "buyer_order_confirmed",
-            data: { orderId: order.orderId },
-            url: `/buyer/orders/${order.orderId}`,
+            sellerId: seller.customId,
+            title: "🛒 New Order Received",
+            message: `You have a new order from ${buyerData.name}. Total ₹${totalAmount}.`,
+            type: "new_order",
+            data: { orderId: order.orderId, total: totalAmount },
+            url: `/seller/orders/${order.orderId}`,
             pubsub,
           });
-        } catch (err) {
-          console.error("⚠️ Buyer notification error:", err);
         }
 
         return order;
@@ -168,15 +154,15 @@ export const orderResolvers = {
 
         await createSellerNotification({
           sellerId: deletedOrder.buyer.buyerId,
-          title: "🗑️ Order Deleted",
+          title: "🗑 Order Deleted",
           message: `Your order #${orderId} has been cancelled or deleted.`,
           type: "order_deleted",
           data: { orderId },
-          url: `/buyer/orders`,
+          url: "/buyer/orders",
           pubsub,
         });
 
-        console.log(`🗑️ Order Deleted: ${orderId}`);
+        console.log(`🗑 Order Deleted: ${orderId}`);
         return deletedOrder;
       } catch (err) {
         console.error("❌ Error deleting order:", err);

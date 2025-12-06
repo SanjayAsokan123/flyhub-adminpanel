@@ -28,7 +28,6 @@ export async function createSellerNotification({
       read: false,
     });
 
-    // Send push notification only to sellers (or ADMIN if used as flag)
     if (seller) {
       const tokens = [
         ...(seller.fcmTokens || []),
@@ -42,7 +41,6 @@ export async function createSellerNotification({
       }
     }
 
-    // Subscription
     if (pubsub) {
       await pubsub.publish(SELLER_NOTIFICATION_TOPIC, {
         sellerNotificationAdded: {

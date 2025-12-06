@@ -3,7 +3,7 @@ import { Seller } from "../models/Seller.model.js";
 import { sendSellerStatusMail } from "../utils/emailService.js";
 import { createSellerNotification } from "../utils/createSellerNotification.js";
 import {calculateFinalPrice} from "../utils/TaxCalculator.js";
-import { sendPushNotification } from "../utils/sendPushNotification.js";
+import { sendPushNotification } from "../utils/SendPushNotification.js";
 
 import {
   uploadSingleFile,
@@ -11,11 +11,7 @@ import {
 } from "../utils/uploadToFirebase.js";
 
 export const droneResolvers = {
-  // ============================================================
-  // 📊 QUERIES
-  // ============================================================
   Query: {
-    // ✅ Get all drones with seller info
     drones: async () => {
       try {
         const drones = await Drone.aggregate([
@@ -60,17 +56,12 @@ export const droneResolvers = {
     rejectedDrones: async (_, { sellerId }) =>
       Drone.find({ sellerId, status: "rejected" }),
   },
-
-  // ============================================================
-  // ⚙️ MUTATIONS
-  // ============================================================
   Mutation: {
 
   saveSellerFcmToken: async (_, { sellerId, token }) => {
       const seller = await Seller.findOne({ customId: sellerId });
       if (!seller) throw new Error("Seller not found");
 
-      // Add token if not already present
       if (!seller.fcmTokens.includes(token)) {
         seller.fcmTokens.push(token);
         await seller.save();
@@ -78,9 +69,6 @@ export const droneResolvers = {
 
       return true;
     },
-    /**
-     * 🚀 Create a new Drone listing
-     */
     createDrone: async (_, { input }, { pubsub }) => {
       try {
         const seller = await Seller.findOne({ customId: input.sellerId });
@@ -89,13 +77,11 @@ export const droneResolvers = {
         const { finalPrice } = await calculateFinalPrice(input.price);
         input.price = finalPrice;
 
-        // ✅ Upload image to Firebase (if file provided)
         let imageUrl = input.image;
         if (input.imageFile?.file) {
           imageUrl = await uploadSingleFile(input.imageFile.file, "drones");
         }
 
-        // ✅ Create and save new drone
         const newDrone = new Drone({
           name: input.name,
           brand: input.brand,
@@ -109,7 +95,6 @@ export const droneResolvers = {
 
         const savedDrone = await newDrone.save();
 
-        // 🔔 Notify seller of submission
         await createSellerNotification({
           sellerId: input.sellerId,
           title: "🛩️ Drone Listing Submitted",
@@ -133,9 +118,6 @@ export const droneResolvers = {
       }
     },
 
-    /**
-     * ✏️ Update Drone details
-     */
     updateDrone: async (_, { uin, input }) => {
       try {
         const updated = await Drone.findOneAndUpdate({ uin }, input, {
@@ -151,15 +133,11 @@ export const droneResolvers = {
 
 updateDroneStatus: async (_, { uin, status }, { pubsub }) => {
   try {
-    // 1️⃣ Find the drone
     const drone = await Drone.findOne({ uin });
     if (!drone) throw new Error(`Drone with UIN ${uin} not found`);
-
-    // 2️⃣ Update status
     drone.status = status;
     const updatedDrone = await drone.save();
 
-    // 3️⃣ Find seller
     const seller = await Seller.findOne({ customId: updatedDrone.sellerId });
     if (!seller) throw new Error(`Seller not found for ID ${updatedDrone.sellerId}`);
 
@@ -180,8 +158,6 @@ if(status==="approved")
           "Please contact admin for more info"
           );
           }
-
-    // 5️⃣ Existing pubsub notification (optional)
     if (pubsub) {
       await createSellerNotification({
         title: "Drone Status Update",
@@ -193,8 +169,6 @@ if(status==="approved")
         pubsub,
       });
     }
-
-    // 6️⃣ Send email
     await sendSellerStatusMail({
       to: seller.email,
       productType: "Drone",
@@ -210,20 +184,15 @@ if(status==="approved")
   }
 },
 
-    /**
-     * 🗑️ Delete Drone + Firebase cleanup
-     */
     deleteDrone: async (_, { uin }, { pubsub }) => {
       try {
         const deleted = await Drone.findOneAndDelete({ uin });
         if (!deleted) throw new Error("Drone not found");
 
-        // 🧹 Clean up uploaded image
         if (deleted.image) {
           await deleteFirebaseFile(deleted.image);
         }
 
-        // 🔔 Notify seller
         await createSellerNotification({
           sellerId: deleted.sellerId,
           title: "🗑️ Drone Deleted",

@@ -45,7 +45,6 @@ function Sidebar() {
   const isParentActive = (paths) =>
     paths.some((path) => location.pathname.startsWith(path));
 
-  // Toggle functions that don't close other dropdowns
   const toggleUsers = () => setOpenUsers(!openUsers);
   const toggleSeller = () => setOpenSeller(!openSeller);
   const toggleBuyer = () => setOpenBuyer(!openBuyer);
@@ -53,7 +52,6 @@ function Sidebar() {
   const toggleUserBookings = () => setOpenUserBookings(!openUserBookings);
 
   useEffect(() => {
-    // Only set to true if path matches, never set to false
     setOpenUsers(prev => isParentActive([
       "/drones",
       "/parts",

@@ -1,77 +1,53 @@
 import mongoose from "mongoose";
-import { Seller } from "./Seller.model.js"; // Required for seller.customId
-
-// ======================================================
-// INTERNAL COUNTER SCHEMA (NO SEPARATE FILE NEEDED)
-// ======================================================
+import { Seller } from "./Seller.model.js";
+import {Buyer} from "./Buyer.model.js";
+// ------------------ INTERNAL COUNTER SCHEMA ------------------
 const internalCounterSchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true },
-  seq: { type: Number, default: 0 },
+  sellerId: { type: String, required: true, unique: true },
+  count: { type: Number, default: 0 },
 });
 
 const InternalCounter = mongoose.model("InternalCounter", internalCounterSchema);
 
-// ======================================================
-// CONTACT SCHEMA
-// ======================================================
-const contactSchema = new mongoose.Schema(
+// ------------------ SERVICE BOOKING SCHEMA ------------------
+const serviceBookingSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, lowercase: true, trim: true },
-    location: { type: String, required: true },
+    name: String,
+    email: String,
+    phone: String,
+    location: String,
     date: { type: Date, default: Date.now },
-    information: { type: String, required: true, trim: true },
-
-   status: { type: String, default: "pending" },
-
-    phone: {
-      type: String,
-      default: null,
-      trim: true,
-    },
-
-    sellerId: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    serviceId: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    serviceBookingId: {
-      type: String,
-      unique: true,
-      trim: true,
-    },
+    information: String,
+    status: { type: String, default: "pending" },
+    sellerId: { type: String, required: true },
+    serviceId: { type: String, required: true },
+    buyerId :{type:String,required:true},
+    serviceBookingId: { type: String, unique: true },
   },
   { timestamps: true }
 );
 
-// ======================================================
-// AUTO-GENERATE serviceBookingId  (Pattern: FLYHUBS0081SB0001)
-// ======================================================
-contactSchema.pre("save", async function (next) {
+// ------------------ AUTO GENERATE serviceBookingId ------------------
+serviceBookingSchema.pre("save", async function (next) {
   try {
-    if (this.isNew && !this.serviceBookingId) {
-      // 1️⃣ Find seller to get customId prefix
-      const seller = await Seller.findOne({ customId: this.sellerId });
-      if (!seller) throw new Error("Seller not found for auto ID generation");
+    // Avoid regenerating for updates
+    if (!this.isNew || this.serviceBookingId) return next();
 
-      // 2️⃣ Increment internal counter
-      const counter = await InternalCounter.findOneAndUpdate(
-        { name: `contact_${this.sellerId}` },
-        { $inc: { seq: 1 } },
-        { new: true, upsert: true }
-      );
+    // 1️⃣ Fetch seller using customId
+    const seller = await Seller.findOne({ customId: this.sellerId });
+    if (!seller)
+      throw new Error("Seller not found while generating booking ID");
 
-      // 3️⃣ Generate ID: FLYHUBS0081SB0001
-      this.serviceBookingId =
-        `${seller.customId}SB${String(counter.seq).padStart(4, "0")}`;
-    }
+    // 2️⃣ Create or increment internal counter for this seller
+    const counter = await InternalCounter.findOneAndUpdate(
+      { sellerId: this.sellerId },
+      { $inc: { count: 1 } },
+      { new: true, upsert: true }
+    );
+
+    // 3️⃣ Format ID → FLYHUBS0081SB0001
+    const serial = String(counter.count).padStart(4, "0");
+    this.serviceBookingId = `${seller.customId}SB${serial}`;
 
     next();
   } catch (err) {
@@ -79,9 +55,7 @@ contactSchema.pre("save", async function (next) {
   }
 });
 
-// Indexes
-contactSchema.index({ email: 1 });
-contactSchema.index({ sellerId: 1 });
-contactSchema.index({ serviceBookingId: 1 });
-
-export default mongoose.model("Contact", contactSchema);
+export const ServiceBooking = mongoose.model(
+  "ServiceBooking",
+  serviceBookingSchema
+);

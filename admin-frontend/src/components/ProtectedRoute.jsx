@@ -9,7 +9,6 @@ const ProtectedRoute = ({ children, allowedFor }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // restrict subadmins from opening superadmin-only pages
   if (allowedFor && currentUser.role !== allowedFor) {
     alert("Access denied ❌ Only Super Admin can view this page.");
     return <Navigate to="/" replace />;

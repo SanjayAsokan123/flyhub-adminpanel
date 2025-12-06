@@ -17,6 +17,7 @@ export const ServiceBookingTypeDefs = gql`
     sellerId: String
     serviceId: String
     serviceBookingId: String
+    buyerId:String
     createdAt: String
     updatedAt: String
   }
@@ -45,7 +46,7 @@ export const ServiceBookingTypeDefs = gql`
     phone: String
     sellerId: String
     serviceId: String
-    serviceBookingId: String!
+    buyerId: String
   }
 
   input UpdateContactInput {
@@ -77,9 +78,12 @@ export const ServiceBookingTypeDefs = gql`
 
     getContactsByStatus(status: String!): [Contact]
 
-    getConfirmedContact: [Contact]
-        getPendingContact: [Contact]
-        getCancelledContact: [Contact]
+    getConfirmedContact(buyerId: String!): [Contact]
+        getPendingContact(buyerId: String!): [Contact]
+        getCancelledContact(buyerId: String!): [Contact]
+
+       getBuyerfirebaseUidInServiceBooking(firebaseUid: String!): Buyer
+
   }
 
   # ==============================

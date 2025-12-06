@@ -28,7 +28,6 @@ export async function createBuyerNotification({
       read: false,
     });
 
-    // PUSH NOTIFICATION
     if (buyer) {
       const tokens = [
         ...(buyer.fcmTokens || []),
@@ -43,8 +42,6 @@ export async function createBuyerNotification({
         );
       }
     }
-
-    // GRAPHQL SUBSCRIPTION EVENT
     pubsub.publish(BUYER_NOTIFICATION_TOPIC, {
       buyerNotificationAdded: {
         ...notification.toObject(),
