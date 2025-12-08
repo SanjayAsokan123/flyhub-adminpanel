@@ -1,11 +1,6 @@
 import { gql } from "apollo-server-express";
 
 export const accessoryTypeDefs = gql`
-  type WishlistUser {
-    userId: ID!
-    addedAt: String
-  }
-
   type SellerInfo {
     email: String
     phoneNumber: String
@@ -21,7 +16,6 @@ export const accessoryTypeDefs = gql`
     image: String
     quantity: Int
     status: String!
-    wishlist: [WishlistUser]
     sellerId: String
     sellerInfo: SellerInfo
   }

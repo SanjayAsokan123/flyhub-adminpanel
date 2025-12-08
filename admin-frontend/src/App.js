@@ -45,7 +45,7 @@ export default function App() {
             <ProtectedRoute>
               <Layout>
                 <Routes>
-                  <Route path="/" element={<Dashboard />} />
+                  {/* <Route path="/D" element={<Dashboard />} /> */}
                   <Route path="/users" element={<Users />} />
                   <Route path="/drones" element={<Drones />} />
                   <Route path="/parts" element={<Parts />} />

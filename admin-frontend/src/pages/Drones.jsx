@@ -18,7 +18,7 @@ function Drones() {
 
     const query = `
       query {
-        drones {
+        drones {  
           droneId
           name
           brand
@@ -26,6 +26,7 @@ function Drones() {
           price
           description
           image
+          quantity
           status
           sellerId
           sellerInfo {
@@ -217,7 +218,7 @@ function Drones() {
               <p className="brand">Brand: {drone.brand}</p>
               <p className="price">₹ {drone.price}</p>
               <p className="desc">{drone.description}</p>
-
+               <p><strong>Quantity:</strong> {drone.quantity}</p>
               <div className="status-actions">
                 {drone.status === "approved" && (
                   <>

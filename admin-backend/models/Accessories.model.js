@@ -12,16 +12,6 @@ const accessorySchema = new mongoose.Schema(
     image: { type: String },
     quantity: { type: Number, default: 1 },
     status: { type: String, default: "pending" },
-    wishlist: [
-      {
-        userId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-          required: true,
-        },
-        addedAt: { type: Date, default: Date.now },
-      },
-    ],
     sellerId: { type: String, required: true },
   },
   { timestamps: true }

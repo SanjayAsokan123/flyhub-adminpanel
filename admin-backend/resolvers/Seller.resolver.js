@@ -14,13 +14,10 @@ function isValidEmail(email) {
 }
 
 function normalizeAddresses(value) {
-  // Accept either array or single string. Ensure array-of-strings in DB.
   if (!value) return [];
   if (Array.isArray(value)) return value.map((v) => String(v).trim()).filter(Boolean);
-  // single string -> wrap
   return [String(value).trim()];
 }
-
 async function sendPushToSeller(tokens, status, customId) {
   if (!tokens || tokens.length === 0) return;
 
@@ -46,7 +43,9 @@ async function sendPushToSeller(tokens, status, customId) {
 
   try {
     const response = await messaging.sendEachForMulticast(message);
-   
+    console.log(
+      `📩 FCM sent: ${response.successCount} successes, ${response.failureCount} failures.`
+    );
 
     if (response.failureCount > 0) {
       const failedTokens = [];
@@ -83,7 +82,6 @@ async function resolveAndPersistFirebaseUid(seller) {
     }
 
     if (seller.firebaseUid) {
-      // Persist only when changed
       if (seller.isModified && typeof seller.save === "function") {
         try {
           await seller.save();
@@ -155,7 +153,6 @@ export const sellerResolvers = {
           (email && isValidEmail(email)) ||
           (username ? `${username}@autogen.flyhub` : null) ||
           (phone ? `${phone}@autogen.flyhub` : `autogen_${Date.now()}@flyhub`);
-
         seller = new Seller({
           email: autoEmail,
           name: username || "New Seller",
@@ -193,7 +190,6 @@ export const sellerResolvers = {
       if (email && !isValidEmail(email))
         throw new Error("Invalid email format");
 
-      // Normalize addresses
       const shippingAddresses = normalizeAddresses(input.shippingAddresses);
       const pickupAddresses = normalizeAddresses(input.pickupAddresses);
 
@@ -217,7 +213,6 @@ export const sellerResolvers = {
         fcmTokens: [],
       };
 
-      // Add FCM token
       if (input.fcmToken) {
         sellerDoc.fcmTokens.push(String(input.fcmToken).trim());
       }
@@ -318,8 +313,83 @@ export const sellerResolvers = {
         });
       } catch {}
 
+
       return seller;
     },
+updateSeller: async (_, { customId, input }, { pubsub }) => {
+  if (!customId) throw new Error("customId is required");
+
+  const seller = await Seller.findOne({ customId });
+  if (!seller) throw new Error("Seller not found");
+
+  const shippingAddresses = normalizeAddresses(input.shippingAddresses);
+  const pickupAddresses = normalizeAddresses(input.pickupAddresses);
+
+  const updatableFields = [
+    "name",
+    "companyName",
+    "PANnumber",
+    "gstNumber",
+    "address",
+    "bankIFCnumber",
+    "bankAccountNumber",
+    "authorized",
+    "email",
+    "phoneNumber",
+    "companyPan",
+    "bankName",
+    "firebaseUid",
+    "status",
+  ];
+
+  updatableFields.forEach((field) => {
+    if (input[field] !== undefined && input[field] !== null) {
+      seller[field] = String(input[field]).trim();
+    }
+  });
+
+  if (input.shippingAddresses !== undefined)
+    seller.shippingAddresses = shippingAddresses;
+
+  if (input.pickupAddresses !== undefined)
+    seller.pickupAddresses = pickupAddresses;
+
+  if (input.fcmToken) {
+    if (!seller.fcmTokens) seller.fcmTokens = [];
+    if (!seller.fcmTokens.includes(input.fcmToken)) {
+      seller.fcmTokens.push(String(input.fcmToken).trim());
+    }
+  }
+
+  await seller.save();
+  await resolveAndPersistFirebaseUid(seller);
+
+  try {
+    if (seller.firebaseUid) {
+      await firestore.collection("sellers").doc(seller.firebaseUid).set(
+        {
+          name: seller.name,
+          companyName: seller.companyName,
+          status: seller.status,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+    }
+  } catch (e) {
+    console.warn("Firestore sync failed:", e.message);
+  }
+
+  if (input.status && seller.fcmTokens?.length) {
+    await sendPushNotification(
+      seller.fcmTokens,
+      "Seller Profile Updated",
+      "Your seller account details were updated."
+    );
+  }
+
+  return seller;
+},
 
         deleteSeller: async (_, { customId }, { pubsub }) => {
               const seller =
@@ -350,7 +420,7 @@ export const sellerResolvers = {
                 message: `Seller ${customId} deleted.`,
                 type: "seller_deleted",
                 data: { customId },
-                url: `/admin/sellers`,
+                url: "/admin/sellers",
                 pubsub,
               });
 

@@ -188,11 +188,11 @@ export default function HirePilotsDashboard() {
                 {p.adminStatus?.toUpperCase() || "UNKNOWN"}
               </span>
 
-              <img
+              {/* <img
                 src={"/pilot-placeholder.jpg"}
                 alt={p.pilotName}
                 className="rental-img"
-              />
+              /> */}
 
               <div className="rental-body">
                 <h3 className="rental-name">{p.pilotName}</h3>

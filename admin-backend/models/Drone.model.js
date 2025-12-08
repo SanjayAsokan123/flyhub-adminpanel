@@ -10,6 +10,7 @@ const droneSchema = new mongoose.Schema(
     price: { type: Number, required: true },
     description: { type: String, required: true },
     image: { type: String },
+    quantity: { type: Number, default: 1 },
     status: { type: String, default: "pending" },
     sellerId: { type: String, required: true },
   },

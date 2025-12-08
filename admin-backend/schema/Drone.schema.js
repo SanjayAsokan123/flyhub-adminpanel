@@ -1,11 +1,6 @@
 import { gql } from "apollo-server-express";
 
 export const droneTypeDefs = gql`
-  type WishlistUser {
-    userId: ID!
-    addedAt: String
-  }
-
   type SellerInfo {
     email: String
     phoneNumber: String
@@ -19,8 +14,8 @@ export const droneTypeDefs = gql`
     price: Float!
     description: String
     image: String
+    quantity: Int
     status: String!
-    wishlist: [WishlistUser]
     sellerId: String
     sellerInfo: SellerInfo
   }
@@ -32,6 +27,7 @@ export const droneTypeDefs = gql`
     price: Float!
     description: String!
     image: String
+    quantity: Int
     status: String
     sellerId: String!
   }

@@ -19,10 +19,7 @@ export const orderTypeDefs = gql`
     sellerId: String
   }
 
-  type Payment {
-    method: String
-    status: String
-  }
+
 
   type Order {
     orderId: String
@@ -48,31 +45,41 @@ export const orderTypeDefs = gql`
     quantity: Int
   }
 
-  input PaymentInput {
-    method: String
-    status: String
-  }
+type Payment {
+  method: String
+  status: String
+  transactionId: String
+}
+
+input PaymentInput {
+  method: String
+  status: String
+  transactionId: String
+}
+
 
   extend type Query {
-    """Fetch all orders"""
     orders: [Order]
 
-    """Fetch specific order by ID"""
-    order(orderId: String!): Order   # ✅ Added this
+    order(orderId: String!): Order
   }
 
   extend type Mutation {
-    """Create a new order"""
     createOrder(
       buyerData: BuyerInput!
       items: [ItemInput!]!
       paymentData: PaymentInput!
     ): Order
 
-    """Update buyer info"""
+    createRazorpayOrder(amount: Int!): String
+   verifyRazorpayPayment(
+    razorpay_order_id: String!
+    razorpay_payment_id: String!
+    razorpay_signature: String!
+  ): Boolean
+
     updateOrder(orderId: String!, address: String, phone: String): Order
 
-    """Delete an order"""
     deleteOrder(orderId: String!): Order
   }
 `;

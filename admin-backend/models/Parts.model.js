@@ -1,16 +1,6 @@
 import mongoose from "mongoose";
 import { Seller } from "./Seller.model.js";
 
-
-async function getNextSequence(prefix) {
-  const ret = await Counter.findByIdAndUpdate(
-    prefix,
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true }
-  ).lean();
-  return ret.seq;
-}
-
 const partSchema = new mongoose.Schema(
   {
     partId: { type: String, unique: true },

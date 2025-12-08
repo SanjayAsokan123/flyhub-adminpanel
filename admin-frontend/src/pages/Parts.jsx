@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+                                                                                                                                                                import React, { useEffect, useState } from "react";
 import "../styles/Parts.css";
 const GRAPHQL_URL = "http://127.0.0.1:5001/graphql";
 

@@ -34,7 +34,7 @@ export const droneResolvers = {
               description: 1,
               image: 1,
               status: 1,
-              wishlist: 1,
+              quantity: 1,
               sellerId: 1,
               "sellerInfo.email": 1,
               "sellerInfo.phoneNumber": 1,
@@ -89,6 +89,7 @@ export const droneResolvers = {
           price: input.price,
           description: input.description,
           image: imageUrl,
+          quantity: input.quantity || 1,
           status: "pending",
           sellerId: input.sellerId,
         });

@@ -34,9 +34,13 @@ export const ServiceBookingTypeDefs = gql`
     pages: Int
   }
 
-  # ==============================
-  #   INPUT TYPES
-  # ==============================
+type Buyer
+{
+ firebaseUid: String,
+ buyerId:String,
+ name:String,
+}
+
   input CreateContactInput {
     name: String!
     email: String!
@@ -58,9 +62,6 @@ export const ServiceBookingTypeDefs = gql`
     status: String
   }
 
-  # ==============================
-  #   QUERIES
-  # ==============================
   type Query {
 
     getAllContacts(
@@ -79,16 +80,13 @@ export const ServiceBookingTypeDefs = gql`
     getContactsByStatus(status: String!): [Contact]
 
     getConfirmedContact(buyerId: String!): [Contact]
-        getPendingContact(buyerId: String!): [Contact]
-        getCancelledContact(buyerId: String!): [Contact]
+    getPendingContact(buyerId: String!): [Contact]
+    getCancelledContact(buyerId: String!): [Contact]
 
        getBuyerfirebaseUidInServiceBooking(firebaseUid: String!): Buyer
 
   }
 
-  # ==============================
-  #   MUTATIONS
-  # ==============================
   type Mutation {
 
     createContact(input: CreateContactInput!): ContactResponse
@@ -100,9 +98,6 @@ export const ServiceBookingTypeDefs = gql`
     deleteContact(id: ID!): DeleteResponse
   }
 
-  # ==============================
-  #   RESPONSE TYPES
-  # ==============================
   type ContactResponse {
     success: Boolean!
     message: String

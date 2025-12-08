@@ -1,4 +1,4 @@
-import DroneRental from "../models/Buyer_booking_Drone_rental.model.js";
+import DroneRental from "../models/Buyer_Booking_Drone_rental.model.js";
 import { Rental } from "../models/Rental.model.js";
 import { Seller } from "../models/Seller.model.js";
 import { Buyer } from "../models/Buyer.model.js";
@@ -38,7 +38,9 @@ export const droneRentalBookingResolvers = {
 
                     return buyer;   // 👈 return full buyer object
                   },
+
   },
+
 
   Mutation: {
     createDroneRental: async (_, { name, phone, location, rentalDate, rentalId ,buyerId }) => {
@@ -119,4 +121,3 @@ export const droneRentalBookingResolvers = {
     },
   },
 };
-

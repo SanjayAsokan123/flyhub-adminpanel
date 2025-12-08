@@ -104,16 +104,12 @@ function Sidebar() {
       <nav className="sidebar-nav">
         <ul>
           {/* Dashboard */}
-          <li>
-            <Link to="/" className={isActive("/") ? "active" : ""}>
-              <FaHome /> Dashboard
-            </Link>
-          </li>
+{/* 
            <li>
             <Link to="/popup" className={isActive("/popup") ? "active" : ""}>
               <FaHome /> Popup
             </Link>
-          </li>
+          </li> */}
 
           {/* USERS */}
           <li className={`dropdown ${openUsers ? "open" : ""}`}>

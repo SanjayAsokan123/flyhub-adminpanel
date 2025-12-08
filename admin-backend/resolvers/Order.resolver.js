@@ -1,3 +1,5 @@
+import crypto from "crypto";
+import { razorpay } from "../utils/razorpay.js";
 import { Order } from "../models/Order.model.js";
 import { Drone } from "../models/Drone.model.js";
 import { Part } from "../models/Parts.model.js";
@@ -6,71 +8,81 @@ import { Seller } from "../models/Seller.model.js";
 import { sendSellerStatusMail } from "../utils/emailService.js";
 import { createSellerNotification } from "../utils/createSellerNotification.js";
 
-
 async function getProductDetails(productId, type) {
   switch (type?.toLowerCase()) {
     case "drone":
       return await Drone.findOne({ droneId: productId })
         .select("name price sellerId")
         .lean();
-
     case "part":
       return await Part.findOne({ partId: productId })
         .select("name price sellerId")
         .lean();
-
     case "accessory":
       return await Accessory.findOne({ accessoryId: productId })
         .select("name price sellerId")
         .lean();
-
     default:
       return null;
   }
 }
 
-
-
 export const orderResolvers = {
   Query: {
-    orders: async () => {
-      try {
-        return await Order.find().sort({ createdAt: -1 });
-      } catch (err) {
-        console.error("❌ Error fetching orders:", err);
-        throw new Error("Failed to fetch orders");
-      }
-    },
-
+    orders: async () => await Order.find().sort({ createdAt: -1 }),
     order: async (_, { orderId }) => {
-      try {
-        const order = await Order.findOne({ orderId });
-        if (!order) throw new Error("Order not found");
-        return order;
-      } catch (err) {
-        console.error("❌ Error fetching order:", err);
-        throw new Error("Failed to fetch order");
-      }
+      const order = await Order.findOne({ orderId });
+      if (!order) throw new Error("Order not found");
+      return order;
     },
   },
 
   Mutation: {
+    createRazorpayOrder: async (_, { amount }) => {
+      try {
+        const order = await razorpay.orders.create({
+          amount: amount * 100,
+          currency: "INR",
+          receipt: "receipt_" + Date.now(),
+        });
+        return order.id;
+      } catch (err) {
+        console.error("❌ Razorpay Create Error:", err);
+        throw new Error("Failed to create Razorpay order");
+      }
+    },
+
+    verifyRazorpayPayment: async (
+      _,
+      { razorpay_order_id, razorpay_payment_id, razorpay_signature }
+    ) => {
+      const body = razorpay_order_id + "|" + razorpay_payment_id;
+      const expectedSignature = crypto
+        .createHmac("sha256", process.env.RAZORPAY_SECRET)
+        .update(body)
+        .digest("hex");
+
+      return expectedSignature === razorpay_signature;
+    },
+
     createOrder: async (_, { buyerData, items, paymentData }, { pubsub }) => {
       try {
-        if (!buyerData?.buyerId || !buyerData?.name) {
-          throw new Error("Buyer information incomplete");
-        }
+        if (!buyerData?.buyerId || !buyerData?.name)
+          throw new Error("Buyer info incomplete");
 
-        if (!Array.isArray(items) || items.length === 0) {
-          throw new Error("Order must have at least one item");
-        }
+        if (!items || items.length === 0)
+          throw new Error("Order must contain items");
 
+        // ITEM PROCESSING
         const detailedItems = await Promise.all(
           items.map(async (item) => {
             const product = await getProductDetails(item.productId, item.type);
+
             return {
               productId: item.productId,
-              type: item.type,
+              type:
+                item.type.charAt(0).toUpperCase() +
+                item.type.slice(1).toLowerCase(), // FIXED ENUM
               name: product?.name || "Unknown Product",
               price: product?.price || 0,
               quantity: item.quantity || 1,
@@ -84,20 +96,25 @@ export const orderResolvers = {
           0
         );
 
+        // CREATE ORDER
         const order = new Order({
           orderId: `FHO-${Date.now().toString().slice(-8)}`,
           buyer: buyerData,
           items: detailedItems,
           totalAmount,
           payment: {
-            ...paymentData,
-            status: paymentData?.status || "pending",
+            method: paymentData.method,
+            status: paymentData.status || "pending",
+            transactionId: paymentData.transactionId || null,
           },
         });
 
         await order.save();
 
-        const sellerIds = [...new Set(detailedItems.map(i => i.sellerId).filter(Boolean))];
+        // NOTIFY SELLERS
+        const sellerIds = [
+          ...new Set(detailedItems.map((i) => i.sellerId).filter(Boolean)),
+        ];
         const sellers = await Seller.find({ customId: { $in: sellerIds } });
 
         for (const seller of sellers) {
@@ -123,50 +140,8 @@ export const orderResolvers = {
 
         return order;
       } catch (err) {
-        console.error("❌ Error creating order:", err);
+        console.error("❌ Order Create Error:", err);
         throw new Error("Failed to create order: " + err.message);
-      }
-    },
-
-    updateOrder: async (_, { orderId, address, phone }) => {
-      try {
-        const updateFields = {};
-        if (address) updateFields["buyer.address"] = address;
-        if (phone) updateFields["buyer.phone"] = phone;
-
-        const updatedOrder = await Order.findOneAndUpdate(
-          { orderId },
-          updateFields,
-          { new: true }
-        );
-        if (!updatedOrder) throw new Error("Order not found");
-        return updatedOrder;
-      } catch (err) {
-        console.error("❌ Error updating order:", err);
-        throw new Error("Failed to update order: " + err.message);
-      }
-    },
-
-    deleteOrder: async (_, { orderId }, { pubsub }) => {
-      try {
-        const deletedOrder = await Order.findOneAndDelete({ orderId });
-        if (!deletedOrder) throw new Error("Order not found");
-
-        await createSellerNotification({
-          sellerId: deletedOrder.buyer.buyerId,
-          title: "🗑 Order Deleted",
-          message: `Your order #${orderId} has been cancelled or deleted.`,
-          type: "order_deleted",
-          data: { orderId },
-          url: "/buyer/orders",
-          pubsub,
-        });
-
-        console.log(`🗑 Order Deleted: ${orderId}`);
-        return deletedOrder;
-      } catch (err) {
-        console.error("❌ Error deleting order:", err);
-        throw new Error("Failed to delete order: " + err.message);
       }
     },
   },

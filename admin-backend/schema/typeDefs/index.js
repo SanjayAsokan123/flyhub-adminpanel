@@ -20,7 +20,9 @@ import { sellerTypeDefs } from "../Seller.schema.js";
 import { trainingTypeDefs } from "../Training.schema.js";
 import { taxTypeDefs } from "../Tax.schema.js";
 import { ServiceBookingTypeDefs } from "../Service_Book_Now.schema.js";
-
+import { cartTypeDefs } from "../Cart.schema.js";
+import { wishlistTypeDefs } from "../Wishlist.schema.js";
+import { productTypeDef } from "../Product.schema.js";
 export const typeDefs = [
   baseTypeDefs,
   droneTypeDefs,
@@ -42,4 +44,7 @@ export const typeDefs = [
   dronerentalBookingTypeDefs,
   jobApplicationTypeDefs,
   ServiceBookingTypeDefs,
+  cartTypeDefs,
+  wishlistTypeDefs,
+  productTypeDef
 ];

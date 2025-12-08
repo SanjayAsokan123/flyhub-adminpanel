@@ -18,7 +18,9 @@ import { trainingResolvers } from "../Training.resolver.js";
 import { taxResolvers } from "../Tax.resolver.js";
 import { ServiceBookingResolvers } from "../Service_Book_Now.resolver.js";
 import { subscriptionResolvers } from "../subscriptionResolvers.js";
-
+import { cartResolvers } from "../Cart.resolver.js";
+import { wishlistResolvers } from "../Wishlist.resolver.js";
+import { productResolvers } from "../Product.resolver.js";
 export const resolves = [
   droneResolvers,
   partResolvers,
@@ -39,5 +41,8 @@ export const resolves = [
   rentalBookingResolvers,
   droneRentalBookingResolvers,
   ServiceBookingResolvers,
-  subscriptionResolvers
+  subscriptionResolvers,
+  cartResolvers,
+  wishlistResolvers,
+  productResolvers
 ];

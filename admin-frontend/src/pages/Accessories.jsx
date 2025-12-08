@@ -27,10 +27,6 @@ function Accessories() {
           image
           quantity
           status
-          wishlist {
-            userId
-            addedAt
-          }
           sellerId
           sellerInfo {
             email
@@ -218,7 +214,6 @@ function Accessories() {
               <p className="desc">{acc.description}</p>
               <p><strong>Category:</strong> {acc.category || "N/A"}</p>
               <p><strong>Quantity:</strong> {acc.quantity}</p>
-              <p><strong>Wishlist Count:</strong> {acc.wishlist?.length || 0}</p>
 
               <div className="status-actions">
                 {acc.status === "approved" && (

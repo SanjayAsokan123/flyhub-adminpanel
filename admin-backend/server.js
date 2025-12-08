@@ -18,6 +18,8 @@ import { pubsub } from "./pubsub.js";
 import multer from "multer";
 import { uploadToFirebase } from "./utils/uploadToFirebase.js";
 import sellerAuthRouter from "./routes/sellerAuth.js";
+import cartRoutes from "./routes/CartRoutes.js";
+import wishlistRoutes from "./routes/WishlistRoutes.js";
 import { typeDefs } from "./schema/typeDefs/index.js";
 import { resolves } from "./resolvers/resolves/index.js";
 import { GraphQLScalarType, Kind } from "graphql";
@@ -31,38 +33,50 @@ const startServer = async () => {
     app.use(cors());
     app.use(express.json());
     app.use(verifyFirebaseToken);
+
+    // ⭐ FIXED REST ENDPOINTS
+    app.use("/cart", cartRoutes);
+    app.use("/wishlist", wishlistRoutes);
     app.use("/auth", sellerAuthRouter);
+
     const storage = multer.memoryStorage();
     const upload = multer({ storage });
+
     app.get("/healthz", (_req, res) => res.json({ ok: true }));
+
     app.post("/upload", upload.single("file"), async (req, res) => {
       try {
         if (!req.file) {
-          return res
-            .status(400)
-            .json({ success: false, message: "No file uploaded" });
+          return res.status(400).json({
+            success: false,
+            message: "No file uploaded"
+          });
         }
 
         const folder = req.body.folder || "hire-pilots";
         const firebaseUser = req.firebaseUser;
         const publicUrl = await uploadToFirebase(req.file, folder);
-        console.log(
-          `📤 ${firebaseUser?.email || "anonymous"} uploaded to ${folder}`
-        );
+
+        console.log(`📤 ${firebaseUser?.email || "anonymous"} uploaded to ${folder}`);
+
         res.json({
           success: true,
           url: publicUrl,
           uploader: firebaseUser?.email,
           message: "✅ File uploaded successfully",
         });
+
       } catch (err) {
         console.error("❌ Upload Error:", err);
         res.status(500).json({ success: false, message: err.message });
       }
     });
+
     app.use(graphqlUploadExpress({ maxFileSize: 10_000_000, maxFiles: 10 }));
+
     await connectDB();
 
+    // ⭐ Custom Date Scalar
     const DateScalar = new GraphQLScalarType({
       name: "Date",
       description: "Custom Date scalar type",
