@@ -14,17 +14,25 @@ export const wishlistTypeDefs = gql`
     status: String
   }
 
+  type Buyer {
+    firebaseUid: String
+    buyerId: String
+    name: String
+    email: String
+  }
+
   type WishlistItem {
     id: ID!
     buyerId: String!
     productId: String!
     addedAt: Date
-    product: Product   # ⭐ MUST BE ADDED
+    product: Product
   }
 
   extend type Query {
     getProduct(productId: String!): Product
     getWishlist(buyerId: String!): [WishlistItem]
+    getBuyerfirebaseUidWish(firebaseUid: String!): Buyer
   }
 
   extend type Mutation {

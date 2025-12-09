@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { Buyer } from "./Buyer.model.js";
 
 const CartSchema = new mongoose.Schema({
     buyerId: { type: String, required: true },
