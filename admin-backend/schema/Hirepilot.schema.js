@@ -1,6 +1,7 @@
 import { gql } from "apollo-server-express";
 
 export const hirePilotTypeDefs = gql`
+
   type Price {
     perHour: Float
     perDay: Float
@@ -30,8 +31,8 @@ export const hirePilotTypeDefs = gql`
     certifications: [Certification!]!
     resume: File!
     description: String
-    email: String
-    phoneNumber: String
+    newemail: String
+    newphoneNumber: String
     adminStatus: String
     buyerStatus: String
     seller: Seller
@@ -68,8 +69,20 @@ export const hirePilotTypeDefs = gql`
     description: String
   }
 
+  type DeleteResponse {
+    success: Boolean!
+    message: String!
+  }
 
-  type BookPilotResponse {
+  type HirePilotPage {
+    items: [HirePilot!]!
+    totalCount: Int!
+    page: Int!
+    limit: Int!
+    pageCount: Int!
+  }
+
+    type BookPilotResponse {
     success: Boolean!
     message: String!
     booking: PilotBooking
@@ -91,33 +104,23 @@ export const hirePilotTypeDefs = gql`
     sellerId: ID!
   }
 
-
-
   extend type Query {
     hirePilots: [HirePilot]
-
     hirePilot(pilotId: String!): HirePilot
-
     hirePilotsBySeller(sellerId: String!): [HirePilot]
-
     hirePilotsByStatus(adminStatus: String!): [HirePilot]
-
     approvedHirePilotsByStatus: [HirePilot]
-
+    approvedHirePilotsPaginated(page: Int!, limit: Int!): HirePilotPage!
   }
 
   extend type Mutation {
     addHirePilot(input: HirePilotInput!): HirePilot!
-
     updateHirePilot(pilotId: String!, input: HirePilotInput!): HirePilot!
-
-
     adminUpdateHirePilotStatus(pilotId: String!, adminStatus: String!): HirePilot!
-
     buyerUpdateHirePilotStatus(pilotId: String!, buyerStatus: String!): HirePilot!
-
-    deleteHirePilot(pilotId: String!): HirePilot!
+    deleteHirePilot(pilotId: String!): DeleteResponse!
   }
+
   extend type Subscription {
     hirePilotStatusChanged: HirePilotStatusChange
   }

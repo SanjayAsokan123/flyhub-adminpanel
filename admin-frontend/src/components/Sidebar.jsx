@@ -20,6 +20,7 @@ import {
   FaSignOutAlt,
   FaBookOpen,
   FaBuilding,
+  FaUserCircle,
 } from "react-icons/fa";
 
 import { MdLocalShipping } from "react-icons/md";
@@ -192,6 +193,14 @@ function Sidebar() {
                           className={isActive("/seller") ? "active" : ""}
                         >
                           <FaBuilding /> Seller Approval
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          to="/seller-details"
+                          className={isActive("/seller-details") ? "active" : ""}
+                        >
+                          <FaUserCircle /> Seller Details
                         </Link>
                       </li>
                       <li>

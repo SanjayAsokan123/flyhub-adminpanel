@@ -9,6 +9,39 @@ import {
   deleteFirebaseFile,
 } from "../utils/uploadToFirebase.js";
 
+// 🔧 Base lookup for Part → Seller join
+const baseLookupPart = [
+  {
+    $lookup: {
+      from: "sellers",
+      localField: "sellerId",
+      foreignField: "customId",
+      as: "sellerInfo",
+    },
+  },
+  {
+    $unwind: {
+      path: "$sellerInfo",
+      preserveNullAndEmptyArrays: true,
+    },
+  },
+  {
+    $project: {
+      partId: 1,
+      name: 1,
+      brand: 1,
+      price: 1,
+      description: 1,
+      image: 1,
+      status: 1,
+      quantity: 1,
+      sellerId: 1,
+      "sellerInfo.email": 1,
+      "sellerInfo.phoneNumber": 1,
+    },
+  },
+];
+
 
 export const partResolvers = {
   Query: {
@@ -59,6 +92,41 @@ export const partResolvers = {
         throw new Error("Failed to fetch part");
       }
     },
+   approvedPartPaginated: async (_, { page, limit }) => {
+  const pageNumber = Math.max(page, 1);
+  const pageSize = Math.max(limit, 1);
+  const skip = (pageNumber - 1) * pageSize;
+
+  const matchStage = { $match: { status: "approved" } };
+
+  const [result] = await Part.aggregate([
+    matchStage,
+    {
+      $facet: {
+        items: [
+          ...baseLookupPart,
+          { $skip: skip },
+          { $limit: pageSize },
+        ],
+        totalCount: [
+          { $count: "count" },
+        ],
+      },
+    },
+  ]);
+
+  const totalCount =
+    result.totalCount.length > 0 ? result.totalCount[0].count : 0;
+
+  return {
+    items: result.items,
+    totalCount,
+    page: pageNumber,
+    limit: pageSize,
+    pageCount: Math.ceil(totalCount / pageSize),
+  };
+},
+
   },
 
   Mutation: {

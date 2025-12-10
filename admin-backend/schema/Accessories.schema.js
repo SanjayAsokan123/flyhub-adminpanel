@@ -31,6 +31,14 @@ export const accessoryTypeDefs = gql`
     sellerId: String!
   }
 
+    type AccessoryPage {
+    items: [Accessory!]!
+    totalCount: Int!
+    page: Int!
+    limit: Int!
+    pageCount: Int!
+  }
+
   extend type Query {
     accessories: [Accessory!]!
 
@@ -41,6 +49,8 @@ export const accessoryTypeDefs = gql`
     approvedAccessories(sellerId: String!): [Accessory!]
 
     pendingAccessories(sellerId: String!): [Accessory!]
+
+    approvedAccessoriesPaginated(page: Int!, limit: Int!): AccessoryPage!
   }
 
   extend type Mutation {

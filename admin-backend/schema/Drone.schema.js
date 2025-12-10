@@ -32,12 +32,22 @@ export const droneTypeDefs = gql`
     sellerId: String!
   }
 
+  
+  type DronePage {
+    items: [Drone!]!
+    totalCount: Int!
+    page: Int!
+    limit: Int!
+    pageCount: Int!
+  }
+
   type Query {
     drones: [Drone!]
     drone(id: ID!): Drone
     rejectedDrones(sellerId: String!): [Drone!]
       approvedDrones(sellerId: String!): [Drone!]
       pendingDrones(sellerId: String!): [Drone!]
+      approvedDronePaginated(page: Int!, limit: Int!): DronePage!
   }
 
   type Mutation {

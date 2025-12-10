@@ -77,6 +77,45 @@ export const hirePilotResolvers = {
     approvedHirePilotsByStatus: async () =>
       HirePilot.aggregate([{ $match: { adminStatus: /^approved$/i } }, ...baseLookup]),
 
+    approvedHirePilotsPaginated: async (_, { page, limit }) => {
+      const pageNumber = Math.max(page, 1);
+      const pageSize = Math.max(limit, 1);
+      const skip = (pageNumber - 1) * pageSize;
+
+      const matchStage = { $match: { adminStatus: /^approved$/i } };
+
+      const [result] = await HirePilot.aggregate([
+        matchStage,
+        {
+          $facet: {
+            items: [
+              ...baseLookup,
+              { $skip: skip },
+              { $limit: pageSize },
+            ],
+            totalCount: [
+              { $count: "count" },
+            ],
+          },
+        },
+      ]);
+
+      const totalCount = result.totalCount && result.totalCount.length > 0
+        ? result.totalCount[0].count
+        : 0;
+
+      const pageCount = Math.ceil(totalCount / pageSize);
+
+      return {
+        items: result.items,
+        totalCount,
+        page: pageNumber,
+        limit: pageSize,
+        pageCount,
+      };
+    },
+
+
 
   },
 
@@ -108,7 +147,7 @@ export const hirePilotResolvers = {
 
         await createSellerNotification({
           sellerId: input.sellerId,
-          title: "🧑‍✈️ New Pilot Submitted",
+          title: "🧑‍✈ New Pilot Submitted",
           message: `Your pilot "${input.pilotName}" has been submitted and is pending approval.`,
           type: "hire_pilot_listing",
           data: { pilotId: newPilot.pilotId },
@@ -130,7 +169,7 @@ export const hirePilotResolvers = {
     },
 
 
-    
+
     deleteHirePilot: async (_, { pilotId }, { pubsub }) => {
       try {
         const deleted = await HirePilot.findOneAndDelete({ pilotId });
@@ -147,7 +186,7 @@ export const hirePilotResolvers = {
 
         await createSellerNotification({
           sellerId: deleted.sellerId,
-          title: "🗑️ Pilot Listing Deleted",
+          title: "🗑 Pilot Listing Deleted",
           message: `Your pilot "${deleted.pilotName}" has been removed.`,
           type: "hire_pilot_deleted",
           data: { pilotId },
@@ -180,22 +219,20 @@ export const hirePilotResolvers = {
         });
       }
 
-      if(status==="approved")
-           {
-           await sendPushNotification(
-           seller.fcmTokens,
-           "Seller approved",
-           "Explore your profile page and Thank you"
-           );
-           }
-           else if(status==="approved")
-                {
-                await sendPushNotification(
-                seller.fcmTokens,
-                "Seller rejected",
-                "Please contact admin for more info"
-                );
-                }
+      if (adminStatus === "approved") {
+        await sendPushNotification(
+          seller.fcmTokens,
+          "Seller approved",
+          "Explore your profile page and Thank you"
+        );
+      }
+      else if (adminStatus === "approved") {
+        await sendPushNotification(
+          seller.fcmTokens,
+          "Seller rejected",
+          "Please contact admin for more info"
+        );
+      }
 
       if (pubsub) {
         await pubsub.publish("HIRE_PILOT_STATUS_CHANGED", {

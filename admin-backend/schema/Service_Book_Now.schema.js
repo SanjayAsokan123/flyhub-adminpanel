@@ -1,7 +1,7 @@
 import { gql } from "apollo-server-express";
 
 export const ServiceBookingTypeDefs = gql`
-
+    scalar Date
   # ==============================
   #   CONTACT TYPE
   # ==============================
@@ -18,8 +18,8 @@ export const ServiceBookingTypeDefs = gql`
     serviceId: String
     serviceBookingId: String
     buyerId:String
-    createdAt: String
-    updatedAt: String
+    createdAt: Date
+    updatedAt: Date
   }
 
   # ==============================

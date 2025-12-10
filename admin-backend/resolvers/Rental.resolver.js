@@ -8,6 +8,17 @@ import {
   deleteFirebaseFile,
 } from "../utils/uploadToFirebase.js";
 
+const baseLookup = [
+  {
+    $lookup: {
+      from: "sellers",
+      localField: "sellerId",
+      foreignField: "customId",
+      as: "sellerInfo"
+    }
+  },
+  { $unwind: { path: "$sellerInfo", preserveNullAndEmptyArrays: true } }
+];
 export const rentalResolvers = {
   Query: {
     rentals: async () => {
@@ -44,6 +55,42 @@ export const rentalResolvers = {
       Rental.find({ sellerId, status: "pending" }),
     rejectedRentals: async (_, { sellerId }) =>
       Rental.find({ sellerId, status: "rejected" }),
+    approvedRentalsPaginated: async (_, { page, limit }) => {
+      const pageNumber = Math.max(page, 1);
+      const pageSize = Math.max(limit, 1);
+      const skip = (pageNumber - 1) * pageSize;
+
+      const matchStage = { $match: { status: "approved" } };
+
+      const [result] = await Rental.aggregate([
+        matchStage,
+        {
+          $facet: {
+            items: [
+              ...baseLookup, // use your existing baseLookup array
+              { $skip: skip },
+              { $limit: pageSize },
+            ],
+            totalCount: [{ $count: "count" }],
+          },
+        },
+      ]);
+
+      const totalCount =
+        result.totalCount && result.totalCount.length > 0
+          ? result.totalCount[0].count
+          : 0;
+
+      const pageCount = Math.ceil(totalCount / pageSize);
+
+      return {
+        items: result.items,
+        totalCount,
+        page: pageNumber,
+        limit: pageSize,
+        pageCount,
+      };
+    }
   },
 
   Mutation: {
@@ -163,22 +210,20 @@ export const rentalResolvers = {
           });
         }
 
-        if(status==="approved")
-             {
-             await sendPushNotification(
-             seller.fcmTokens,
-             "Seller approved",
-             "Explore your profile page and Thank you"
-             );
-             }
-             else if(status==="approved")
-                  {
-                  await sendPushNotification(
-                  seller.fcmTokens,
-                  "Seller rejected",
-                  "Please contact admin for more info"
-                  );
-                  }
+        if (status === "approved") {
+          await sendPushNotification(
+            seller.fcmTokens,
+            "Seller approved",
+            "Explore your profile page and Thank you"
+          );
+        }
+        else if (status === "approved") {
+          await sendPushNotification(
+            seller.fcmTokens,
+            "Seller rejected",
+            "Please contact admin for more info"
+          );
+        }
 
         return {
           ...updated.toObject(),
@@ -206,7 +251,7 @@ export const rentalResolvers = {
 
         await createSellerNotification({
           sellerId: deleted.sellerId,
-          title: "🗑️ Rental Deleted",
+          title: "🗑 Rental Deleted",
           message: `Your rental "${deleted.name}" has been removed from the system.`,
           type: "rental_deleted",
           data: { rentalId },

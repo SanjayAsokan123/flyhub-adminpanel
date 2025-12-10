@@ -5,6 +5,40 @@ import { sendSellerStatusMail } from "../utils/emailService.js";
 import { createSellerNotification } from "../utils/createSellerNotification.js";
 import {calculateFinalPrice} from "../utils/TaxCalculator.js";
 import { sendPushNotification } from "../utils/SendPushNotification.js";
+
+const baseLookupAccessory = [
+  {
+    $lookup: {
+      from: "sellers",
+      localField: "sellerId",
+      foreignField: "customId",
+      as: "sellerInfo",
+    },
+  },
+  {
+    $unwind: {
+      path: "$sellerInfo",
+      preserveNullAndEmptyArrays: true,
+    },
+  },
+  {
+    $project: {
+      accessoryId: 1,
+      name: 1,
+      brand: 1,
+      category: 1,
+      price: 1,
+      description: 1,
+      image: 1,
+      status: 1,
+      quantity: 1,
+      sellerId: 1,
+      "sellerInfo.email": 1,
+      "sellerInfo.phoneNumber": 1,
+    },
+  },
+];
+
 export const accessoryResolvers = {
   Query: {
     accessories: async () => {
@@ -47,7 +81,7 @@ export const accessoryResolvers = {
             : null,
         };
       } catch (error) {
-        console.error("❌ Error fetching accessory:", error);
+        console.error("❌ Error fetching accessory:", error); 
         throw new Error("Failed to fetch accessory: " + error.message);
       }
     },
@@ -58,6 +92,43 @@ export const accessoryResolvers = {
       Accessory.find({ sellerId, status: "approved" }),
     pendingAccessories: async (_, { sellerId }) =>
       Accessory.find({ sellerId, status: "pending" }),
+
+    approvedAccessoriesPaginated: async (_, { page, limit }) => {
+  const pageNumber = Math.max(page, 1);
+  const pageSize = Math.max(limit, 1);
+  const skip = (pageNumber - 1) * pageSize;
+
+  // Only fetch approved accessories
+  const matchStage = { $match: { status: "approved" } };
+
+  const [result] = await Accessory.aggregate([
+    matchStage,
+    {
+      $facet: {
+        items: [
+          ...baseLookupAccessory,
+          { $skip: skip },
+          { $limit: pageSize },
+        ],
+        totalCount: [
+          { $count: "count" },
+        ],
+      },
+    },
+  ]);
+
+  const totalCount =
+    result.totalCount?.length > 0 ? result.totalCount[0].count : 0;
+
+  return {
+    items: result.items,
+    totalCount,
+    page: pageNumber,
+    limit: pageSize,
+    pageCount: Math.ceil(totalCount / pageSize),
+  };
+},
+
   },
 
   Mutation: {
@@ -160,22 +231,20 @@ export const accessoryResolvers = {
           }
         }
 
-       if(status==="approved")
-            {
-            await sendPushNotification(
-            seller.fcmTokens,
-            "Seller approved",
-            "Explore your profile page and Thank you"
-            );
-            }
-            else if(status==="approved")
-                 {
-                 await sendPushNotification(
-                 seller.fcmTokens,
-                 "Seller rejected",
-                 "Please contact admin for more info"
-                 );
-                 }
+      if (status === "approved") {
+  await sendPushNotification(
+    seller.fcmTokens,
+    "Approval Successful",
+    "Your accessory has been approved!"
+  );
+} else if (status === "rejected") {
+  await sendPushNotification(
+    seller.fcmTokens,
+    "Accessory Rejected",
+    "Please contact admin for more information."
+  );
+}
+
 
         return {
           ...updated.toObject(),

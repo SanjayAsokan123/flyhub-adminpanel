@@ -10,6 +10,34 @@ import {
   deleteFirebaseFile,
 } from "../utils/uploadToFirebase.js";
 
+const baseLookup = [
+  {
+    $lookup: {
+      from: "sellers",
+      localField: "sellerId",
+      foreignField: "customId",
+      as: "sellerInfo",
+    },
+  },
+  { $unwind: { path: "$sellerInfo", preserveNullAndEmptyArrays: true } },
+  {
+    $project: {
+      droneId: 1,
+      name: 1,
+      brand: 1,
+      uin: 1,
+      price: 1,
+      description: 1,
+      image: 1,
+      status: 1,
+      quantity: 1,
+      sellerId: 1,
+      "sellerInfo.email": 1,
+      "sellerInfo.phoneNumber": 1,
+    },
+  },
+];
+
 export const droneResolvers = {
   Query: {
     drones: async () => {
@@ -55,6 +83,43 @@ export const droneResolvers = {
       Drone.find({ sellerId, status: "pending" }),
     rejectedDrones: async (_, { sellerId }) =>
       Drone.find({ sellerId, status: "rejected" }),
+
+approvedDronePaginated: async (_, { page, limit }) => {
+  const pageNumber = Math.max(page, 1);
+  const pageSize = Math.max(limit, 1);
+  const skip = (pageNumber - 1) * pageSize;
+
+  const matchStage = { $match: { status: "approved" } };
+
+  const [result] = await Drone.aggregate([
+    matchStage,
+    {
+      $facet: {
+        items: [
+          ...baseLookup,
+          { $skip: skip },
+          { $limit: pageSize },
+        ],
+        totalCount: [
+          { $count: "count" },
+        ],
+      },
+    },
+  ]);
+
+  const totalCount =
+    result.totalCount?.length ? result.totalCount[0].count : 0;
+
+  return {
+    items: result.items,
+    totalCount,
+    page: pageNumber,
+    limit: pageSize,
+    pageCount: Math.ceil(totalCount / pageSize),
+  };
+},
+
+
   },
   Mutation: {
 

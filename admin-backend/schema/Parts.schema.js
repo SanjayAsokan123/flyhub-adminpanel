@@ -29,7 +29,13 @@ input PartInput {
   sellerId: String!
   status: String
 }
-
+  type PartPage {
+    items: [Part!]!
+    totalCount: Int!
+    page: Int!
+    limit: Int!
+    pageCount: Int!
+  }
 
   type Query {
     parts: [Part!]
@@ -37,6 +43,7 @@ input PartInput {
     rejectedParts(sellerId: String!): [Part!]
     approvedParts(sellerId: String!): [Part!]
     pendingParts(sellerId: String!): [Part!]
+      approvedPartPaginated(page: Int!, limit: Int!): PartPage!
   }
 
   type Mutation {

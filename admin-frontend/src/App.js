@@ -4,6 +4,7 @@ import Dashboard from "./components/Dashboard";
 import Users from "./pages/Users";
 import Drones from "./pages/Drones";
 import Parts from "./pages/Parts";
+import SellerDetails from "./pages/SellerDetails";
 import Accessories from "./pages/Accessories";
 import SoldProducts from "./pages/SoldProducts";
 import Services from "./pages/Service";
@@ -71,6 +72,7 @@ export default function App() {
                    <Route path="/drone-rental-form" element={<DroneRentalForm />} />
                   <Route path="/return-product" element={<ReturnProductsForm />} />
                   <Route path="/tax" element={<TaxSettingsForm />} />
+                  <Route path="/seller-details" element={<SellerDetails />} />
                 </Routes>
               </Layout>
             </ProtectedRoute>
