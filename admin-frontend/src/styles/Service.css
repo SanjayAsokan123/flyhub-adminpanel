@@ -1,0 +1,314 @@
+/* ===========================
+   MAIN CONTAINER
+=========================== */
+.service-container {
+  padding: 30px;
+  font-family: "Poppins", sans-serif;
+}
+
+.service-container h2 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 25px;
+  color: white;
+  text-align: center;
+}
+
+/* ===========================
+   STATUS TABS
+=========================== */
+.status-tabs {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 25px;
+}
+
+.status-tab {
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: 1px solid #dcdcdc;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: 0.25s ease;
+}
+
+.status-tab:hover {
+  background: #f5f5f5;
+}
+
+.status-tab.active {
+  background: #222;
+  color: white;
+  border-color: #222;
+}
+
+/* ===========================
+   GRID
+=========================== */
+.service-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 22px;
+}
+
+/* ===========================
+   CARD
+=========================== */
+.service-card {
+  background: #fff;
+  border: 1px solid #e7e7e7;
+  border-radius: 16px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  padding: 12px; /* Reduced from 18px to 12px */
+  position: relative;
+  transition: 0.3s ease;
+}
+
+.service-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+/* ===========================
+   BADGE (Pending/Approved/Rejected)
+=========================== */
+.service-status-badge {
+  position: absolute;
+  top: 10px; /* Reduced from 14px */
+  right: 10px; /* Reduced from 14px */
+  padding: 4px 10px; /* Reduced padding */
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.service-status-badge.status-approved {
+  background: #d7f5e5;
+  color: #1f8c4f;
+}
+
+.service-status-badge.status-pending {
+  background: #fff4c4;
+  color: #b18a00;
+}
+
+.service-status-badge.status-rejected {
+  background: #ffd8d8;
+  color: #d03333;
+}
+
+/* ===========================
+   IMAGE AREA
+=========================== */
+.service-img {
+  width: 100%;
+  height: 160px; /* Reduced from 180px */
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f1f1f1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  object-fit: cover;
+}
+
+/* ===========================
+   DETAILS TEXT
+=========================== */
+.service-card h3 {
+  font-size: 18px;
+  margin: 12px 0 6px; /* Reduced margins */
+  color: #333;
+}
+
+.service-card p {
+  font-size: 14px;
+  margin: 3px 0; /* Reduced margin */
+  color: #555;
+}
+
+.service-card p strong {
+  color: #333;
+}
+
+.service-card .price {
+  font-weight: 600;
+  color: #1f8c4f;
+}
+
+/* ===========================
+   SELLER INFO
+=========================== */
+.service-card h4 {
+  font-size: 16px;
+  margin: 12px 0 6px; /* Reduced margins */
+  color: #333;
+  border-top: 1px solid #eee;
+  padding-top: 10px; /* Reduced padding */
+}
+
+.no-seller {
+  color: #777;
+  font-style: italic;
+}
+
+/* ===========================
+   META INFO
+=========================== */
+.service-card h4:last-of-type {
+  margin-top: 12px; /* Reduced margin */
+}
+
+.service-id, .seller-id {
+  font-size: 12px;
+  margin: 6px 0 3px; /* Reduced margins */
+  color: #777;
+  font-family: monospace;
+}
+
+/* ===========================
+   BUTTON GROUP
+=========================== */
+.status-actions {
+  margin-top: 10px; /* Reduced from 14px */
+  display: flex;
+  gap: 8px; /* Reduced gap */
+  flex-wrap: wrap;
+}
+
+/* Buttons Styling */
+.status-btn {
+  padding: 6px 10px; /* Reduced padding */
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s ease;
+  flex: 1;
+  min-width: 90px; /* Reduced min-width */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Approve */
+.status-btn.approve {
+  background: #d8f8de;
+  color: #1b8f46;
+}
+.status-btn.approve:hover:not(:disabled) {
+  background: #c6f2d0;
+}
+.status-btn.approve::before {
+  content: "✓";
+  margin-right: 6px;
+  font-size: 16px;
+}
+
+/* Reject */
+.status-btn.reject {
+  background: #ffd8d8;
+  color: #d03333;
+}
+.status-btn.reject:hover:not(:disabled) {
+  background: #ffbfbf;
+}
+.status-btn.reject::before {
+  content: "✗";
+  margin-right: 6px;
+  font-size: 16px;
+}
+
+/* Pending */
+.status-btn.pending {
+  background: #fff1be;
+  color: #b08100;
+}
+.status-btn.pending:hover:not(:disabled) {
+  background: #ffeaa0;
+}
+.status-btn.pending::before {
+  content: "⏳";
+  margin-right: 6px;
+  font-size: 16px;
+}
+
+/* ===========================
+   EMPTY / LOADING TEXT
+=========================== */
+.no-data,
+.loading,
+.error {
+  text-align: center;
+  font-size: 16px;
+  margin-top: 20px;
+  color: #666;
+  padding: 20px;
+  border-radius: 12px;
+  background: #f9f9f9;
+}
+
+.loading {
+  color: #1f8c4f;
+}
+
+.error {
+  color: #d03333;
+  background: #fff0f0;
+}
+/* ===========================
+   SEARCH BAR
+=========================== */
+.search-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 25px;
+}
+
+.search-input {
+  width: 50%;
+  padding: 12px 16px;
+  border: 1px solid #dcdcdc;
+  border-radius: 12px 0 0 12px;
+  font-size: 14px;
+  font-family: "Poppins", sans-serif;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.search-input:focus {
+  border-color: #222;
+}
+
+.search-button {
+  padding: 12px 16px;
+  background: #222;
+  color: white;
+  border: none;
+  border-radius: 0 12px 12px 0;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.3s ease;
+}
+
+.search-button:hover {
+  background: #333;
+}
+
+/* Responsive adjustments for search */
+@media (max-width: 768px) {
+  .search-input {
+    width: 70%;
+  }
+}

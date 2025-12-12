@@ -1,0 +1,225 @@
+/* ROOT CONTAINER */
+.job-applications-root {
+  max-width: 1100px;
+  margin: 40px auto;
+  padding: 20px;
+  font-family: "Inter", sans-serif;
+}
+
+/* HEADER */
+.job-applications-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.job-applications-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+/* ACTIONS BAR */
+.job-applications-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.job-applications-actions input {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  width: 260px;
+}
+
+.job-applications-actions select {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+}
+
+.job-applications-actions button {
+  padding: 8px 14px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.job-applications-actions button:hover {
+  background: #1d4ed8;
+}
+
+/* LIST */
+.job-applications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* EMPTY STATE */
+.empty {
+  padding: 40px;
+  text-align: center;
+  color: #6b7280;
+  border: 1px dashed #d1d5db;
+  border-radius: 10px;
+  background: #f9fafb;
+}
+
+/* APPLICATION CARD */
+.job-application-item {
+  background: #ffffff;
+  padding: 18px 22px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  transition: 0.2s ease;
+}
+
+.job-application-item:hover {
+  transform: scale(1.01);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.job-application-item strong {
+  font-size: 18px;
+  color: #111827;
+}
+
+/* STATUS BADGES */
+.status {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status.pending {
+  background: #fff7e6;
+  color: #b65d00;
+}
+
+.status.reviewed {
+  background: #e6f0ff;
+  color: #1a56db;
+}
+
+.status.shortlisted {
+  background: #e9ffe9;
+  color: #14832d;
+}
+
+.status.hired {
+  background: #d6ffe0;
+  color: #136f3a;
+}
+
+.status.rejected {
+  background: #ffe5e5;
+  color: #c20000;
+}
+
+/* RESUME LINK */
+.job-application-item a {
+  color: #1d4ed8;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.job-application-item a:hover {
+  text-decoration: underline;
+}
+
+/* LOADING & ERROR */
+.loading {
+  text-align: center;
+  color: #2563eb;
+  margin-top: 30px;
+  font-size: 18px;
+}
+
+.error {
+  text-align: center;
+  color: #dc2626;
+  margin-top: 30px;
+  font-size: 18px;
+}
+
+/* PAGINATION */
+.job-applications-footer {
+  margin-top: 30px;
+  text-align: center;
+}
+
+.pagination {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  align-items: center;
+}
+
+.pagination button {
+  padding: 8px 14px;
+  border: 1px solid #cbd5e1;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.pagination button:hover:not([disabled]) {
+  background: #f1f5f9;
+}
+
+.pagination button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.status.pending {
+  color: orange;
+  font-weight: bold;
+}
+
+.status.hired {
+  color: green;
+  font-weight: bold;
+}
+
+.status.rejected {
+  color: red;
+  font-weight: bold;
+}
+
+
+/* RESPONSIVE */
+@media (max-width: 700px) {
+  .job-applications-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .job-applications-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .job-application-item {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+}

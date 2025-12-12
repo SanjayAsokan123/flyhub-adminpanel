@@ -1,0 +1,100 @@
+.pilot-form-container {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  overflow-x: auto;
+}
+
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.form-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #222;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+}
+
+.refresh-btn,
+.retry-btn {
+  background: #0275d8;
+  border: none;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: 0.3s;
+}
+
+.refresh-btn:disabled {
+  background: #93b9d9;
+  cursor: not-allowed;
+}
+
+.refresh-btn:hover:not(:disabled),
+.retry-btn:hover {
+  background: #025aa5;
+}
+
+.table-wrapper {
+  margin-top: 10px;
+  overflow-x: auto;
+  border-radius: 8px;
+}
+
+.rental-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 950px;
+}
+
+.rental-table th {
+  background: #007bff;
+  color: white;
+  padding: 10px;
+  font-size: 14px;
+  text-align: left;
+}
+
+.rental-table td {
+  padding: 10px;
+  font-size: 13px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.rental-table tr:nth-child(even) {
+  background: #f8f9fa;
+}
+
+.no-data {
+  text-align: center;
+  padding: 20px;
+  font-style: italic;
+  color: #777;
+}
+
+.loading-text {
+  text-align: center;
+  padding: 15px;
+  color: #666;
+}
+
+.error-box {
+  background: #ffe6e6;
+  border-left: 4px solid #d9534f;
+  padding: 12px;
+  border-radius: 6px;
+  color: #d9534f;
+  margin-bottom: 10px;
+}

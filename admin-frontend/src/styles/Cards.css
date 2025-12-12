@@ -1,0 +1,68 @@
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* wider for laptop */
+  gap: 30px;
+  padding: 30px;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0px 6px 12px rgba(0,0,0,0.08);
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0px 10px 20px rgba(0,0,0,0.15);
+}
+
+.card h2 {
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+.number {
+  font-size: 28px;
+  font-weight: bold;
+}
+
+/* Card themes */
+.purple { background: linear-gradient(135deg, #9333ea, #c084fc); color: white; }
+.gradient { background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; }
+.soft { background: linear-gradient(135deg, #c084fc, #e9d5ff); color: #4c1d95; }
+
+/* Trend indicators */
+.trend {
+  position: absolute;
+  bottom: 15px;
+  right: 20px;
+  font-size: 14px;
+  font-weight: bold;
+}
+.trend.up { color: #16a34a; }
+.trend.down { color: #dc2626; }
+
+.card.rejected {
+  background: #ffe6e6;
+  color: #b91c1c;
+}
+.card.buyers {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+
+/* Mobile cards */
+@media (max-width: 480px) {
+  .cards {
+    grid-template-columns: 1fr;
+    gap: 15px;
+    padding: 15px;
+  }
+  .card {
+    padding: 15px;
+  }
+}
