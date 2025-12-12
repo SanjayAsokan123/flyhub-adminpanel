@@ -37,7 +37,17 @@ const SellerSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
-
+    onboardingStatus: {
+    type: String,
+    enum: [
+      "emailPending",
+      "emailVerified",
+      "personalDetailsPending",
+      "bankDetailsPending",
+      "completed"
+    ],
+    default: "emailPending"
+  },
     fcmToken: {
       type: String,
       default: null,

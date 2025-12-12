@@ -77,43 +77,78 @@ export const hirePilotResolvers = {
     approvedHirePilotsByStatus: async () =>
       HirePilot.aggregate([{ $match: { adminStatus: /^approved$/i } }, ...baseLookup]),
 
-    approvedHirePilotsPaginated: async (_, { page, limit }) => {
-      const pageNumber = Math.max(page, 1);
-      const pageSize = Math.max(limit, 1);
-      const skip = (pageNumber - 1) * pageSize;
+   approvedHirePilotsPaginated: async (_, { page, limit, search }) => {
+  const pageNumber = Math.max(page, 1);
+  const pageSize = Math.max(limit, 1);
+  const skip = (pageNumber - 1) * pageSize;
 
-      const matchStage = { $match: { adminStatus: /^approved$/i } };
-
-      const [result] = await HirePilot.aggregate([
-        matchStage,
-        {
-          $facet: {
-            items: [
-              ...baseLookup,
-              { $skip: skip },
-              { $limit: pageSize },
-            ],
-            totalCount: [
-              { $count: "count" },
-            ],
-          },
-        },
-      ]);
-
-      const totalCount = result.totalCount && result.totalCount.length > 0
-        ? result.totalCount[0].count
-        : 0;
-
-      const pageCount = Math.ceil(totalCount / pageSize);
-
-      return {
-        items: result.items,
-        totalCount,
-        page: pageNumber,
-        limit: pageSize,
-        pageCount,
-      };
+  // Build dynamic search filters
+  const matchStage = {
+    $match: {
+      adminStatus: /^approved$/i,
+      ...(search?.pilotName
+        ? { pilotName: { $regex: search.pilotName, $options: "i" } }
+        : {}),
+      ...(search?.location
+        ? { location: { $regex: search.location, $options: "i" } }
+        : {}),
+      ...(search?.minPricePerHour || search?.maxPricePerHour
+        ? {
+            "price.perHour": {
+              ...(search.minPricePerHour
+                ? { $gte: search.minPricePerHour }
+                : {}),
+              ...(search.maxPricePerHour
+                ? { $lte: search.maxPricePerHour }
+                : {}),
+            },
+          }
+        : {}),
+      ...(search?.minPricePerDay || search?.maxPricePerDay
+        ? {
+            "price.perDay": {
+              ...(search.minPricePerDay
+                ? { $gte: search.minPricePerDay }
+                : {}),
+              ...(search.maxPricePerDay
+                ? { $lte: search.maxPricePerDay }
+                : {}),
+            },
+          }
+        : {}),
     },
+  };
+
+  const [result] = await HirePilot.aggregate([
+    matchStage,
+    {
+      $facet: {
+        items: [
+          ...baseLookup, // keep your existing lookups
+          { $skip: skip },
+          { $limit: pageSize },
+        ],
+        totalCount: [{ $count: "count" }],
+      },
+    },
+  ]);
+
+  const totalCount =
+    result.totalCount && result.totalCount.length > 0
+      ? result.totalCount[0].count
+      : 0;
+
+  const pageCount = Math.ceil(totalCount / pageSize);
+
+  return {
+    items: result.items,
+    totalCount,
+    page: pageNumber,
+    limit: pageSize,
+    pageCount,
+  };
+    },
+
 
 
 

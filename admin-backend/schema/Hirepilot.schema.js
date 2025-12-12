@@ -69,6 +69,16 @@ export const hirePilotTypeDefs = gql`
     description: String
   }
 
+
+  input HirePilotSearchInput {
+    pilotName: String,
+    location: String,
+    minPricePerHour: Float,
+    maxPricePerHour: Float,
+    minPricePerDay: Float,
+    maxPricePerDay: Float,
+  }
+
   type DeleteResponse {
     success: Boolean!
     message: String!
@@ -110,7 +120,7 @@ export const hirePilotTypeDefs = gql`
     hirePilotsBySeller(sellerId: String!): [HirePilot]
     hirePilotsByStatus(adminStatus: String!): [HirePilot]
     approvedHirePilotsByStatus: [HirePilot]
-    approvedHirePilotsPaginated(page: Int!, limit: Int!): HirePilotPage!
+    approvedHirePilotsPaginated(page: Int!, limit: Int! , search: HirePilotSearchInput): HirePilotPage!
   }
 
   extend type Mutation {

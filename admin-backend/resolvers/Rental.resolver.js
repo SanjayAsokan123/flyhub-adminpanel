@@ -55,42 +55,71 @@ export const rentalResolvers = {
       Rental.find({ sellerId, status: "pending" }),
     rejectedRentals: async (_, { sellerId }) =>
       Rental.find({ sellerId, status: "rejected" }),
-    approvedRentalsPaginated: async (_, { page, limit }) => {
-      const pageNumber = Math.max(page, 1);
-      const pageSize = Math.max(limit, 1);
-      const skip = (pageNumber - 1) * pageSize;
 
-      const matchStage = { $match: { status: "approved" } };
+   approvedRentalsPaginated: async (_, { page, limit, search }) => {
+        const pageNumber = Math.max(page, 1);
+        const pageSize = Math.max(limit, 1);
+        const skip = (pageNumber - 1) * pageSize;
 
-      const [result] = await Rental.aggregate([
-        matchStage,
-        {
-          $facet: {
-            items: [
-              ...baseLookup, // use your existing baseLookup array
-              { $skip: skip },
-              { $limit: pageSize },
-            ],
-            totalCount: [{ $count: "count" }],
-          },
-        },
-      ]);
+    const matchStage = {
+      $match: {
+      status: "approved",
+      ...(search?.brand
+        ? { brand: { $regex: search.brand, $options: "i" } }
+        : {}),
+      ...(search?.location
+        ? { location: { $regex: search.location, $options: "i" } }
+        : {}),
+      ...(search?.minPricePerHour || search?.maxPricePerHour
+        ? {
+            pricePerHour: {
+              ...(search.minPricePerHour ? { $gte: search.minPricePerHour } : {}),
+              ...(search.maxPricePerHour ? { $lte: search.maxPricePerHour } : {}),
+            },
+          }
+        : {}),
+      ...(search?.minPricePerDay || search?.maxPricePerDay
+        ? {
+            pricePerDay: {
+              ...(search.minPricePerDay ? { $gte: search.minPricePerDay } : {}),
+              ...(search.maxPricePerDay ? { $lte: search.maxPricePerDay } : {}),
+            },
+          }
+        : {}),
+    },
+  };
 
-      const totalCount =
-        result.totalCount && result.totalCount.length > 0
-          ? result.totalCount[0].count
-          : 0;
+  const [result] = await Rental.aggregate([
+    matchStage,
+    {
+      $facet: {
+        items: [
+          ...baseLookup, // your existing lookup pipeline
+          { $skip: skip },
+          { $limit: pageSize },
+        ],
+        totalCount: [{ $count: "count" }],
+      },
+    },
+  ]);
 
-      const pageCount = Math.ceil(totalCount / pageSize);
+  const totalCount =
+    result.totalCount && result.totalCount.length > 0
+      ? result.totalCount[0].count
+      : 0;
 
-      return {
-        items: result.items,
-        totalCount,
-        page: pageNumber,
-        limit: pageSize,
-        pageCount,
-      };
-    }
+  const pageCount = Math.ceil(totalCount / pageSize);
+
+  return {
+    items: result.items,
+    totalCount,
+    page: pageNumber,
+    limit: pageSize,
+    pageCount,
+  };
+    },
+
+
   },
 
   Mutation: {
