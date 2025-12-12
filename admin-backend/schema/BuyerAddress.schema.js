@@ -52,6 +52,7 @@ export const addressTypeDefs = gql`
     getAddressesByBuyer(buyerId: String!): [Address]
     getAddressById(addressId: String!): Address
     getAllBuyers: [Buyer]
+    getBuyerByFirebaseUid(firebaseUid: String!): Buyer
   }
 
   type Mutation {

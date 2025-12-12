@@ -71,7 +71,7 @@ export default function App() {
                    <Route path="/RegisteredBuyer" element={<RegisteredBuyer/>} />
                    <Route path="/manage-admins" element={<ManageAdmins />} />
                    <Route path="/training-page" element={<TrainingPage />} />
-                  <Route path="/buyer -address" element={<BuyersAddress />} />
+                  <Route path="/buyer-address" element={<BuyersAddress />} />
                   <Route path="/buyer-cart" element={<BuyerCart />} />
                    <Route path="/drone-rental-form" element={<DroneRentalForm />} />
                   <Route path="/return-product" element={<ReturnProductsForm />} />

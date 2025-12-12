@@ -13,7 +13,7 @@ import { createSellerNotification } from "../utils/createSellerNotification.js";
 import { createBuyerNotification } from "../utils/createBuyerNotification.js";
 
 import { sendPushNotification } from "../utils/pushNotification.js";
-import { sendWhatsappFirebase, sendWhatsappMessage } from "../utils/firebaseWhatsapp.js";
+import { sendWhatsappMessage } from "../utils/firebaseWhatsapp.js";
 
 import { ORDER_STATUS } from "../utils/orderStatus.js";
 
