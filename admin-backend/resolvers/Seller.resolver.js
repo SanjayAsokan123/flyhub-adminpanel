@@ -609,7 +609,7 @@ export const sellerResolvers = {
           ) {
             throw new Error("Invalid or expired OTP");
           }
-
+            
           // ============================
           // 3️⃣ PASSWORD VALIDATION
           // ============================
