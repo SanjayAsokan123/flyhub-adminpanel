@@ -1,6 +1,6 @@
 // backend/resolvers/sellerResolvers.js
 import { Seller } from "../models/Seller.model.js";
-import { sendSellerStatusMail } from "../utils/emailService.js";
+import { sendSellerStatusMail , sendOtpEmail } from "../utils/emailService.js";
 import { createSellerNotification } from "../utils/createSellerNotification.js";
 import { createLoginIndex, deleteLoginIndex } from "../utils/loginIndex.js";
 import admin, { auth, firestore } from "../config/firebaseAdmin.js";
@@ -14,7 +14,9 @@ import {Accessory} from "../models/Accessories.model.js";
 import {Drone} from "../models/Drone.model.js";
 const messaging = admin.messaging();
 
-
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 function isValidEmail(email) {
   if (!email) return false;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -582,44 +584,96 @@ export const sellerResolvers = {
 
     // ------------------------------- CHANGE SELLER PASSWORDS -------------
 
-    changeSellerPassword: async (_, { customId, newPassword }) => {
-      if (!customId || !newPassword) {
-        throw new Error("customId and newPassword are required");
-      }
+    changeSellerPassword: async (_, { email, newPassword, otp }) => {
+          if (!email) {
+            throw new Error("Email is required");
+          }
 
-      if (newPassword.length < 8) {
-        throw new Error("Password must be at least 8 characters long");
-      }
+          const seller = await Seller.findOne({ email });
+          if (!seller) throw new Error("Seller not found");
 
-      const seller = await Seller.findOne({ customId });
-      if (!seller) throw new Error("Seller not found");
+          if (seller.status === "deactivated") {
+            throw new Error("Deactivated seller cannot change password");
+          }
+          // ============================
+          // 2️⃣ VERIFY OTP
+          // ============================
+          if (!otp) {
+            throw new Error("OTP is required");
+          }
 
-      if (seller.status === "deactivated") {
-        throw new Error("Deactivated seller cannot change password");
-      }
+          if (
+            seller.otp !== otp ||
+            !seller.otpExpiresAt ||
+            seller.otpExpiresAt < new Date()
+          ) {
+            throw new Error("Invalid or expired OTP");
+          }
 
-      const uid = await resolveAndPersistFirebaseUid(seller);
-      if (!uid) throw new Error("Seller Firebase UID not found");
+          // ============================
+          // 3️⃣ PASSWORD VALIDATION
+          // ============================
+          if (
+            !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/.test(newPassword)
+          ) {
+            throw new Error(
+              "Password must contain uppercase, lowercase, number & special character"
+            );
+          }
 
-      try {
-        await auth.updateUser(uid, { password: newPassword });
+          // ============================
+          // 4️⃣ UPDATE FIREBASE PASSWORD
+          // ============================
+          const uid = await resolveAndPersistFirebaseUid(seller);
+          if (!uid) throw new Error("Seller Firebase UID not found");
 
-        // 🔒 Logout all existing sessions
-        await auth.revokeRefreshTokens(uid);
+          try {
+            await auth.updateUser(uid, { password: newPassword });
 
-        // 📩 Notify seller
-        await sendSellerStatusMail({
-          to: seller.email,
-          productType: "Security",
-          productName: seller.companyName,
-          status: "password_changed",
-        });
+            // 🔒 Logout all devices
+            await auth.revokeRefreshTokens(uid);
 
-        return true;
-      } catch (err) {
-        throw new Error("Failed to update password: " + err.message);
-      }
-      },
+            // 🧹 Clear OTP
+            seller.otp = null;
+            seller.otpExpiresAt = null;
+            await seller.save();
+
+            // 📩 Notify seller
+            await sendSellerStatusMail({
+              to: seller.email,
+              productType: "Security",
+              productName: seller.companyName,
+              status: "password_changed",
+            });
+
+            return true;
+          } catch (err) {
+            throw new Error("Failed to update password: " + err.message);
+          }
+        },
+
+
+
+      // // ----------------------------REQUEST TO SEND OTP ----------------------------------
+
+      requestSellerPasswordOtp: async (_, { email }) => {
+          const seller = await Seller.findOne({ email });
+          if (!seller) throw new Error("Seller not found");
+
+          const otp = generateOTP();
+
+          seller.otp = otp;
+          seller.otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min
+          await seller.save();
+
+          await sendOtpEmail({
+            to: seller.email,
+            otp,
+          });
+
+          return true;
+        },
+
       
   },
 };

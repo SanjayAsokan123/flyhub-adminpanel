@@ -76,9 +76,8 @@ export const buyerTypeDefs = gql`
     updateBuyerFcmToken(buyerId: String!, token: String!): UpdateTokenResponse
     markBuyerNotificationRead(notificationId: String!): NotificationResponse
     removeBuyerFcmToken(buyerId: String!, token: String!): UpdateTokenResponse
-    
-    changeBuyerPassword(email: String!, newPassword: String!): Buyer
-    
+    changeBuyerPassword(email: String!, newPassword: String! , otp: String!): Buyer
+    requestBuyerPasswordOtp(email: String!): Boolean
     testPush: BuyerNotification
   }
 

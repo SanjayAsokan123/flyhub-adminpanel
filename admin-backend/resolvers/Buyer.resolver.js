@@ -10,9 +10,11 @@ import { sendPushNotification } from "../utils/pushNotification.js";
 import { createLoginIndex,deleteLoginIndex,findLoginIndex } from "../utils/loginIndex.js";
 import { auth } from "../config/firebaseAdmin.js";
 import { withFilter } from "graphql-subscriptions";
-import { sendBuyerPasswordChangedEmail } from "../utils/emailService.js";
+import { sendBuyerPasswordChangedEmail  , sendOtpEmail} from "../utils/emailService.js";
 
-
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 function normalizePhone(phone) {
   if (!phone) return "";
   const cleaned = phone.replace(/\D/g, "");
@@ -62,6 +64,7 @@ function isStrongPassword(password) {
 
   return regex.test(password);
 }
+
 
 
 export const buyerResolvers = {
@@ -260,49 +263,90 @@ export const buyerResolvers = {
 
     // ------------CHANGE BUYER PASSWORD---------------- 
 
-    changeBuyerPassword: async (_, { email, newPassword }) => {
-        // 1️⃣ Validate password strength
-        if (!isStrongPassword(newPassword)) {
-          throw new Error(
-            "Password must be at least 8 characters long and include uppercase, lowercase, number, and special character"
-          );
-        }
+    changeBuyerPassword: async (_, { email, newPassword, otp }) => {
+             if (!email) {
+               throw new Error("Email is required");
+             }
 
-        // 2️⃣ Find buyer
-        const buyer = await Buyer.findOne({ email });
-        if (!buyer) throw new Error("Buyer not found");
+             const buyer = await Buyer.findOne({ email });
+             if (!buyer) throw new Error("Buyer not found");
 
-        // 3️⃣ Update MongoDB password
-        const hashed = await bcrypt.hash(newPassword, 10);
-        buyer.password = hashed;
-        await buyer.save();
+            
+             // ============================
+             // 2️⃣ VERIFY OTP
+             // ============================
+             if (!otp) {
+               throw new Error("OTP is required");
+             }
+   
+             if (
+               buyer.otp !== otp ||
+               !buyer.otpExpiresAt ||
+               buyer.otpExpiresAt < new Date()
+             ) {
+               throw new Error("Invalid or expired OTP");
+             }
+   
+             // ============================
+             // 3️⃣ PASSWORD VALIDATION
+             // ============================
+             if (
+               !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/.test(newPassword)
+             ) {
+               throw new Error(
+                 "Password must contain uppercase, lowercase, number & special character"
+               );
+             }
+   
+             // ============================
+             // 4️⃣ UPDATE FIREBASE PASSWORD
+             // ============================
+             const uid = await resolveFirebaseUid(buyer);
+             if (!uid) throw new Error("Buyer Firebase UID not found");
+   
+             try {
+               await auth.updateUser(uid, { password: newPassword });
+   
+               // 🔒 Logout all devices
+               await auth.revokeRefreshTokens(uid);
+   
+               // 🧹 Clear OTP
+               buyer.otp = null;
+               buyer.otpExpiresAt = null;
+               await buyer.save();
+   
+               // 📩 Notify buyer
+               await sendSellerStatusMail({
+                 to: buyer.email,
+                 productType: "Security",
+                 productName: buyer.companyName,
+                 status: "password_changed",
+               });
+   
+               return true;
+             } catch (err) {
+               throw new Error("Failed to update password: " + err.message);
+             }
+           },
+   // // ----------------------------REQUEST TO SEND OTP ----------------------------------
+   
+   requestBuyerPasswordOtp: async (_, { email }) => {
+             const buyer = await Buyer.findOne({ email });
+             if (!buyer) throw new Error("Buyer not found");
 
-        // 4️⃣ Update Firebase password (if linked)
-        if (buyer.firebaseUid) {
-          try {
-            await auth.updateUser(buyer.firebaseUid, {
-              password: newPassword,
-            });
+             const otp = generateOTP();
 
-            // 5️⃣ Force logout from all devices
-            await auth.revokeRefreshTokens(buyer.firebaseUid);
-          } catch (err) {
-            console.error("Firebase password update failed:", err);
-            throw new Error("Password updated locally, but Firebase sync failed");
-          }
-        }
-
-        // 6️⃣ Send Email Notification (non-blocking)
-        try {
-          await sendBuyerPasswordChangedEmail({
-            to: buyer.email,
-            name: buyer.name,
-          });
-        } catch (err) {
-          console.warn("⚠ Password change email failed:", err.message);
-        }
-     },
-
+             buyer.otp = otp;
+             buyer.otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min
+             await buyer.save();
+   
+             await sendOtpEmail({
+               to: buyer.email,
+               otp,
+             });
+   
+             return true;
+           },
   },
   Subscription: {
     buyerNotificationAdded: {

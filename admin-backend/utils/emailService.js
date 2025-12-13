@@ -194,3 +194,32 @@ export const sendBuyerPasswordChangedEmail = async ({ to, name }) => {
     console.error("❌ Password change email failed:", err.message);
   }
 };
+
+
+// ============================================================
+//    SEND OTP TO USER EMAIL
+// ============================================================
+export const sendOtpEmail = async ({ to, name, otp }) => {
+  try {
+    const transport = getTransporter(); 
+
+    await transport.sendMail({
+      from: `"Flyhub Support" <${process.env.EMAIL_USER}>`,
+      to,
+      subject: "Your Flyhub OTP Code",
+      html: `
+        <div style="font-family:Arial,sans-serif;padding:20px">
+          <h3>🔑 Your OTP Code</h3>
+          <p>Hi ${name || "User"},</p>
+          <p>Your OTP code is: <strong>${otp}</strong></p>
+          <p>This code will expire in 10 minutes.</p>
+          <br/>
+          <p>– Flyhub Support Team</p>
+        </div>
+      `,  });
+
+    console.log("✅ OTP email sent to:", to);
+  } catch (err) {
+    console.error("❌ OTP email failed:", err.message);
+  }
+};  

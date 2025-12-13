@@ -93,6 +93,7 @@ export const sellerTypeDefs = gql`
     removeSellerFcmToken(customId: String!, fcmToken: String!): UpdateTokenResponse!
     deactivateSeller(customId: ID!, reason: String!): Seller!
     activateSeller(customId: ID!): Seller!
-    changeSellerPassword(customId: ID!, newPassword: String!): Seller!
+    changeSellerPassword(email: String!, newPassword: String!, otp: String): Seller!
+    requestSellerPasswordOtp(email: String!): Seller!
   }
 `;

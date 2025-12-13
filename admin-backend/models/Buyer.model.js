@@ -33,7 +33,8 @@ const BuyerSchema = new mongoose.Schema(
       sparse: true,
       unique: true,
     },
-
+    otp: String,
+    otpExpiresAt: Date,
     password: String,
 
     fcmToken: { type: String, default: null },

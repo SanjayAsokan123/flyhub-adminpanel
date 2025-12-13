@@ -39,7 +39,8 @@ const SellerSchema = new mongoose.Schema(
     },
     deactivatedAt: { type: Date, default: null },
     deactivatedReason: { type: String, default: null },
-    
+    otp: { type: String, default: null },
+    otpExpiresAt: { type: Date, default: null },
     fcmToken: {
       type: String,
       default: null,
