@@ -4,32 +4,23 @@ export const sellerTypeDefs = gql`
   type Seller {
     customId: ID
     firebaseUid: String
-
     name: String
     companyName: String
     PANnumber: String
     gstNumber: String
     address: String
-
     bankIFCnumber: String
     bankAccountNumber: String
     authorized: String
-
     email: String
     phoneNumber: String
-
     status: SellerStatus
-
     shippingAddresses: [String!]
     pickupAddresses: [String!]
-
     companyPan: String
     bankName: String
-
     fcmTokens: [String!]
     fcmToken: String
-
-    Drones: [Drone!]
   }
 
   enum SellerStatus {
@@ -46,24 +37,36 @@ export const sellerTypeDefs = gql`
     PANnumber: String
     gstNumber: String
     address: String
-
     bankIFCnumber: String
     bankAccountNumber: String
     authorized: String
-
     email: String
     phoneNumber: String
-
     shippingAddresses: [String!]
     pickupAddresses: [String!]
-
     companyPan: String
     bankName: String
-
     firebaseUid: String
     status: SellerStatus
     fcmToken: String
   }
+
+input SellerProfileInput {
+  name: String
+  companyName: String
+  PANnumber: String
+  gstNumber: String
+  address: String
+
+  bankIFCnumber: String
+  bankAccountNumber: String
+  companyPan: String
+  bankName: String
+
+  pickupAddresses: [String!]
+  shippingAddresses: [String!]
+}
+
 
   type UpdateTokenResponse {
     success: Boolean!
@@ -88,7 +91,11 @@ export const sellerTypeDefs = gql`
     createSeller(input: SellerInput!): Seller!
     changeSellerStatus(customId: ID!, status: SellerStatus!): Seller!
     deleteSeller(customId: ID!): Seller
-    updateSeller(customId: String!, input: SellerInput!): Seller
+    #updateSeller(customId: String!, input: SellerInput!): Seller
+    updateSellerProfile(
+    customId: String!
+    input: SellerProfileInput!
+  ): Seller
     updateSellerFcmToken(customId: String!, fcmToken: String!): UpdateTokenResponse!
     removeSellerFcmToken(customId: String!, fcmToken: String!): UpdateTokenResponse!
     deactivateSeller(customId: ID!, reason: String!): Seller!

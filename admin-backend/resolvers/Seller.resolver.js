@@ -352,80 +352,120 @@ export const sellerResolvers = {
 
       return seller;
     },
-    updateSeller: async (_, { customId, input }, { pubsub }) => {
-      if (!customId) throw new Error("customId is required");
+    // updateSeller: async (_, { customId, input }, { pubsub }) => {
+    //   if (!customId) throw new Error("customId is required");
 
-      const seller = await Seller.findOne({ customId });
-      if (!seller) throw new Error("Seller not found");
+    //   const seller = await Seller.findOne({ customId });
+    //   if (!seller) throw new Error("Seller not found");
 
-      const shippingAddresses = normalizeAddresses(input.shippingAddresses);
-      const pickupAddresses = normalizeAddresses(input.pickupAddresses);
+    //   const shippingAddresses = normalizeAddresses(input.shippingAddresses);
+    //   const pickupAddresses = normalizeAddresses(input.pickupAddresses);
 
-      const updatableFields = [
-        "name",
-        "companyName",
-        "PANnumber",
-        "gstNumber",
-        "address",
-        "bankIFCnumber",
-        "bankAccountNumber",
-        "authorized",
-        "email",
-        "phoneNumber",
-        "companyPan",
-        "bankName",
-        "firebaseUid",
-        "status",
-      ];
+    //   const updatableFields = [
+    //     "name",
+    //     "companyName",
+    //     "PANnumber",
+    //     "gstNumber",
+    //     "address",
+    //     "bankIFCnumber",
+    //     "bankAccountNumber",
+    //     "authorized",
+    //     "email",
+    //     "phoneNumber",
+    //     "companyPan",
+    //     "bankName",
+    //     "firebaseUid",
+    //     "status",
+    //   ];
 
-      updatableFields.forEach((field) => {
-        if (input[field] !== undefined && input[field] !== null) {
-          seller[field] = String(input[field]).trim();
-        }
-      });
+    //   updatableFields.forEach((field) => {
+    //     if (input[field] !== undefined && input[field] !== null) {
+    //       seller[field] = String(input[field]).trim();
+    //     }
+    //   });
 
-      if (input.shippingAddresses !== undefined)
-        seller.shippingAddresses = shippingAddresses;
+    //   if (input.shippingAddresses !== undefined)
+    //     seller.shippingAddresses = shippingAddresses;
 
-      if (input.pickupAddresses !== undefined)
-        seller.pickupAddresses = pickupAddresses;
+    //   if (input.pickupAddresses !== undefined)
+    //     seller.pickupAddresses = pickupAddresses;
 
-      if (input.fcmToken) {
-        if (!seller.fcmTokens) seller.fcmTokens = [];
-        if (!seller.fcmTokens.includes(input.fcmToken)) {
-          seller.fcmTokens.push(String(input.fcmToken).trim());
-        }
-      }
+    //   if (input.fcmToken) {
+    //     if (!seller.fcmTokens) seller.fcmTokens = [];
+    //     if (!seller.fcmTokens.includes(input.fcmToken)) {
+    //       seller.fcmTokens.push(String(input.fcmToken).trim());
+    //     }
+    //   }
 
-      await seller.save();
-      await resolveAndPersistFirebaseUid(seller);
+    //   await seller.save();
+    //   await resolveAndPersistFirebaseUid(seller);
 
-      try {
-        if (seller.firebaseUid) {
-          await firestore.collection("sellers").doc(seller.firebaseUid).set(
-            {
-              name: seller.name,
-              companyName: seller.companyName,
-              status: seller.status,
-              updatedAt: new Date().toISOString(),
-            },
-            { merge: true }
-          );
-        }
-      } catch (e) {
-        console.warn("Firestore sync failed:", e.message);
-      }
+    //   try {
+    //     if (seller.firebaseUid) {
+    //       await firestore.collection("sellers").doc(seller.firebaseUid).set(
+    //         {
+    //           name: seller.name,
+    //           companyName: seller.companyName,
+    //           status: seller.status,
+    //           updatedAt: new Date().toISOString(),
+    //         },
+    //         { merge: true }
+    //       );
+    //     }
+    //   } catch (e) {
+    //     console.warn("Firestore sync failed:", e.message);
+    //   }
 
-      if (input.status && seller.fcmTokens?.length) {
-        await sendPushNotification(
-          seller.fcmTokens,
-          "Seller Profile Updated",
-          "Your seller account details were updated."
-        );
-      }
+    //   if (input.status && seller.fcmTokens?.length) {
+    //     await sendPushNotification(
+    //       seller.fcmTokens,
+    //       "Seller Profile Updated",
+    //       "Your seller account details were updated."
+    //     );
+    //   }
 
-      return seller;
-    },
+    //   return seller;
+    // },
+
+    updateSellerProfile: async (_, { customId, input }) => {
+  if (!customId) throw new Error("customId is required");
+
+  const seller = await Seller.findOne({ customId });
+  if (!seller) throw new Error("Seller not found");
+
+  const allowedFields = [
+    "name",
+    "companyName",
+    "PANnumber",
+    "gstNumber",
+    "address",
+    "bankIFCnumber",
+    "bankAccountNumber",
+    "companyPan",
+    "bankName",
+  ];
+
+  // Update simple fields
+  allowedFields.forEach((field) => {
+    if (input[field] !== undefined && input[field] !== null) {
+      seller[field] = String(input[field]).trim();
+    }
+  });
+
+  // Update address arrays safely
+  if (input.pickupAddresses !== undefined) {
+    seller.pickupAddresses = normalizeAddresses(input.pickupAddresses);
+  }
+
+  if (input.shippingAddresses !== undefined) {
+    seller.shippingAddresses = normalizeAddresses(input.shippingAddresses);
+  }
+
+  await seller.save();
+
+  return seller;
+},
+
 
         deleteSeller: async (_, { customId }, { pubsub }) => {
               const seller =

@@ -11,22 +11,11 @@ export const droneRentalBookingResolvers = {
     getAllDroneRentals: async () => {
       return await DroneRental.find({}).sort({ createdAt: -1 });
     },
-    // getDroneRentalsBySellerId: async (_, { sellerId }) =>
-    //   DroneRental.find({ sellerId }).sort({ createdAt: -1 }),
+
     getDroneRentalsByBuyerId: async (_, { buyerId }) =>
       DroneRental.find({ buyerId }).sort({ createdAt: -1 }),
 
-    // getConfirmedDroneRentalsByBuyer: async (_, { buyerId }) => {
-    //   return await DroneRental.find({ buyerId, status: "confirmed" });
-    // },
 
-    // getPendingDroneRentalsByBuyer: async (_, { buyerId }) => {
-    //   return await DroneRental.find({ buyerId, status: "pending" });
-    // },
-
-    // getCancelledDroneRentalsByBuyer: async (_, { buyerId }) => {
-    //   return await DroneRental.find({ buyerId, status: "cancelled" });
-    // },
 
     getBuyerfirebaseUidInDroneRental: async (_, { firebaseUid }) => {
       const buyer = await Buyer.findOne({ firebaseUid });
@@ -74,7 +63,7 @@ export const droneRentalBookingResolvers = {
       const listing = await Rental.findOne({ rentalId });
       if (!listing) throw new Error("Invalid rentalId");
 
-      const seller = await Seller.findOne({ customId: listing.sellerId }).select("email phoneNumber");
+      const seller = await Seller.findOne({ customId: listing.sellerId }).select("email phoneNumber name");
       const buyer = await Buyer.findOne({ buyerId: listing.buyerId }).select("buyerId");
       const newBooking = new DroneRental({
         name,
@@ -85,6 +74,7 @@ export const droneRentalBookingResolvers = {
         sellerId: listing.sellerId,
         buyerId: buyerId,
         sellerEmail: seller?.email,
+        sellerName: seller?.name,
         sellerPhone: seller?.phoneNumber,
         status: "pending",
       });

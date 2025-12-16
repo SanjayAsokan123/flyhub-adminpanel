@@ -1,23 +1,24 @@
 import { PilotBooking } from "../models/Pilot_Booking.model.js";
 import { HirePilot } from "../models/Hirepilot.model.js";
 import { Buyer } from "../models/Buyer.model.js";
+import { Seller } from "../models/Seller.model.js";
 
 export const pilotBookingResolvers = {
   Query: {
 
-   getSellerPendingPilotBookings: async (_, { sellerId }) => {
-  const pilots = await HirePilot.find({ sellerId });
-  const pilotIds = pilots.map(p => p.pilotId);
+    getSellerPendingPilotBookings: async (_, { sellerId }) => {
+      const pilots = await HirePilot.find({ sellerId });
+      const pilotIds = pilots.map(p => p.pilotId);
 
-  return await PilotBooking.find({
-    pilotId: { $in: pilotIds },
-    status: "pending",
-    $or: [
-      { sellerDeleted: false },
-      { sellerDeleted: { $exists: false } }
-    ]
-  }).sort({ createdAt: -1 });
-},
+      return await PilotBooking.find({
+        pilotId: { $in: pilotIds },
+        status: "pending",
+        $or: [
+          { sellerDeleted: false },
+          { sellerDeleted: { $exists: false } }
+        ]
+      }).sort({ createdAt: -1 });
+    },
 
 
 
@@ -52,14 +53,14 @@ export const pilotBookingResolvers = {
     },
 
     getBuyerPendingPilotBookings: async (_, { buyerId }) =>
-  await PilotBooking.find({
-    buyerId,
-    status: "pending",
-    $or: [
-      { buyerDeleted: false },
-      { buyerDeleted: { $exists: false } }
-    ]
-  }).sort({ createdAt: -1 }),
+      await PilotBooking.find({
+        buyerId,
+        status: "pending",
+        $or: [
+          { buyerDeleted: false },
+          { buyerDeleted: { $exists: false } }
+        ]
+      }).sort({ createdAt: -1 }),
 
 
     getBuyerApprovedPilotBookings: async (_, { buyerId }) =>
@@ -84,7 +85,7 @@ export const pilotBookingResolvers = {
     bookPilot: async (_, { input }, { user }) => {
       const pilot = await HirePilot.findOne({ pilotId: input.pilotId });
       if (!pilot) throw new Error("Pilot not found");
-
+      const seller = await Seller.findOne({ customId: pilot.sellerId }).select("email phoneNumber name");
 
       const booking = new PilotBooking({
         pilotId: pilot.pilotId,
@@ -100,7 +101,10 @@ export const pilotBookingResolvers = {
         date: input.date,
         startTime: input.startTime,
         endTime: input.endTime,
-
+        sellerId: pilot.sellerId,
+        sellerEmail: seller?.email,
+        sellerName: seller?.name,
+        sellerPhone: seller?.phoneNumber,
         status: "pending",
       });
 

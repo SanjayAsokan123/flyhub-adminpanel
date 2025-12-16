@@ -20,7 +20,10 @@ export const pilotBookingTypeDefs = gql`
     endTime: String!
 
     status: String!
-
+    sellerId:String
+    sellerEmail: String
+    sellerPhone: String
+    sellerName:String
     createdAt: Date
     updatedAt: Date
   }

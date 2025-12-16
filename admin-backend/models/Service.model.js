@@ -12,7 +12,7 @@ const serviceSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   image: { type: String },
   status: { type: String, default: "pending" },
-  sellerId: { type: String, required: true },
+  sellerId: { type: String, required: true , ref:"Newseller" },
 }, { timestamps: true });
 
 serviceSchema.pre("save", async function(next) {

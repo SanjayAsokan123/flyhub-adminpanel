@@ -1,7 +1,3 @@
-
-
-
-
 import { gql } from "apollo-server-express";
 
 export const ServiceBookingTypeDefs = gql`
@@ -11,7 +7,7 @@ export const ServiceBookingTypeDefs = gql`
   #   CONTACT TYPE
   # ==============================
   type Contact {
-    id: ID!                 # <-- Now correctly supported
+                   
     name: String!
     email: String!
     location: String!
@@ -25,7 +21,17 @@ export const ServiceBookingTypeDefs = gql`
     buyerId: String
     createdAt: Date
     updatedAt: Date
+    Seller : SeriveBookingDetails
   }
+
+  # ==============================
+  #     SERVICE DEtA ILS
+  # ==============================
+    type SeriveBookingDetails
+    {
+      name :String
+      phoneNumber :String
+    }
 
   # ==============================
   #   PAGINATION RESPONSE
@@ -61,6 +67,7 @@ export const ServiceBookingTypeDefs = gql`
     sellerId: String
     serviceId: String
     buyerId: String
+    serviceBookingId: String
   }
 
   input UpdateContactInput {
@@ -104,11 +111,13 @@ export const ServiceBookingTypeDefs = gql`
   type Mutation {
     createContact(input: CreateContactInput!): ContactResponse
 
-    updateContactStatus(id: ID!, status: String!): ContactResponse
+    updateContactStatus(serviceBookingId: String!, status: String!): ContactResponse
 
-    updateContact(id: ID!, input: UpdateContactInput!): ContactResponse
+    updateContact(serviceBookingId: String!, input: UpdateContactInput!): ContactResponse
 
-    deleteContact(id: ID!): DeleteResponse
+    deleteContact(serviceBookingId: String!): DeleteResponse
+    
+    deleteServiceBookingContact(serviceBookingId: String!): DeleteResponse
   }
 
   # ==============================
@@ -117,8 +126,10 @@ export const ServiceBookingTypeDefs = gql`
   type ContactResponse {
     success: Boolean!
     message: String
-    data: Contact
     errors: [String]
+    serviceBookingId: String
+    status:String
+     data: Contact
   }
 
   type DeleteResponse {

@@ -24,6 +24,7 @@ const rentalSchema = new mongoose.Schema(
     },
     sellerEmail: { type: String },
     sellerPhone: { type: String },
+    sellerName: { type : String}, 
     status: { type: String, default: "pending" },
     buyerDeleted: { type: Boolean, default: false },
     sellerDeleted: { type: Boolean, default: false },

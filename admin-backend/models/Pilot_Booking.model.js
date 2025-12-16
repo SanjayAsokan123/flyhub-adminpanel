@@ -21,6 +21,10 @@ const pilotBookingSchema = new mongoose.Schema(
     },
     buyerDeleted: { type: Boolean, default: false },
     sellerDeleted: { type: Boolean, default: false },
+    sellerId: { type: String, required: true },
+    sellerEmail: { type: String },
+    sellerPhone: { type: String },
+    sellerName: { type: String },
   },
   { timestamps: true }
 );

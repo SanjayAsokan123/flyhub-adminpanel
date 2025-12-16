@@ -1,6 +1,7 @@
 import { gql } from "apollo-server-express";
 
 export const dronerentalBookingTypeDefs = gql`
+  scalar Date
   type DroneRental {
     drone_rental_id: String
     name: String!
@@ -11,10 +12,11 @@ export const dronerentalBookingTypeDefs = gql`
     sellerId: String
     sellerEmail: String
     sellerPhone: String
+    sellerName:String
     status: String
     buyerId:String!
-    createdAt: String
-    updatedAt: String
+    createdAt: Date
+    updatedAt: Date
   }
 type Buyer
 {
@@ -22,6 +24,7 @@ type Buyer
  buyerId:String,
  name:String,
 }
+
  type DeleteResponse {
   success: Boolean!
   message: String!

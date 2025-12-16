@@ -29,8 +29,8 @@ export const jobApplicationResolvers = {
     getApplicationById: async (_, { id }) =>
       await JobApplication.findById(id),
     getJobApplications: async () => {
-  return await JobApplication.find().sort({ appliedAt: -1 });
-},
+      return await JobApplication.find().sort({ appliedAt: -1 });
+    },
 
 
     getApplicationStats: async (_, { sellerId }) => {
