@@ -19,6 +19,7 @@ export const productResolvers = {
         brand: product.brand || "",
         price: product.price,
         image: product.image,
+        quantity: product.quantity || 0,
         description: product.description,
         category: product.droneId ? "drone" :
                   product.partId ? "part" :

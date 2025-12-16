@@ -38,8 +38,6 @@ const getTransporter = () => {
   return transporter;
 };
 
-
-
 export async function sendBuyerWelcomeEmail(to, name) {
   try {
     const transporter = nodemailer.createTransport({
@@ -92,7 +90,7 @@ export async function sendSellerStatusMail({
 
   try {
     await getTransporter().sendMail({
-      from: `"Flyhub Admin" <${process.env.EMAIL_USER}>`,
+      from: `Flyhub Admin <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html,
@@ -145,7 +143,7 @@ export async function sendEnrollmentEmails({
 
   try {
     await transport.sendMail({
-      from: `"Flyhub Training" <${process.env.EMAIL_USER}>`,
+      from: `Flyhub Training <${process.env.EMAIL_USER}>`,
       to: studentEmail,
       subject: studentSubject,
       html: studentHtml,
@@ -157,7 +155,7 @@ export async function sendEnrollmentEmails({
 
   try {
     await transport.sendMail({
-      from: `"Flyhub System" <${process.env.EMAIL_USER}>`,
+      from: `Flyhub System <${process.env.EMAIL_USER}>`,
       to: adminEmail,
       subject: adminSubject,
       html: adminHtml,
@@ -167,3 +165,109 @@ export async function sendEnrollmentEmails({
     console.error("❌ Failed to notify admin:", err.message);
   }
 }
+
+// ============================================================
+//  BUYER CHANGE PASSWORD EMAIL 
+// ============================================================
+export const sendBuyerPasswordChangedEmail = async ({ to, name }) => {
+  try {
+    const transport = getTransporter(); 
+
+    await transport.sendMail({
+      from: `Flyhub Security <${process.env.EMAIL_USER}>`,
+      to,
+      subject: "Your Flyhub Password Was Changed",
+      html: `
+        <div style="font-family:Arial,sans-serif;padding:20px">
+          <h3>🔐 Password Changed</h3>
+          <p>Hi ${name || "User"},</p>
+          <p>Your Flyhub account password was changed successfully.</p>
+          <p><b>If this was not you</b>, please contact support immediately.</p>
+          <br/>
+          <p>– Flyhub Security Team</p>
+        </div>
+      `,
+    });
+
+    console.log("✅ Password change email sent to:", to);
+  } catch (err) {
+    console.error("❌ Password change email failed:", err.message);
+  }
+}
+
+export const sendSellerPasswordChangedEmail = async ({ to, name }) => {
+  try {
+    const transport = getTransporter(); 
+
+    await transport.sendMail({
+      from: `Flyhub Security <${process.env.EMAIL_USER}>`,
+      to,
+      subject: "Your Flyhub Password Was Changed",
+      html: `
+        <div style="font-family:Arial,sans-serif;padding:20px">
+          <h3>🔐 Password Changed</h3>
+          <p>Hi ${name || "User"},</p>
+          <p>Your Flyhub account password was changed successfully.</p>
+          <p><b>If this was not you</b>, please contact support immediately.</p>
+          <br/>
+          <p>– Flyhub Security Team</p>
+        </div>
+      `,
+    });
+
+    console.log("✅ Password change email sent to:", to);
+  } catch (err) {
+    console.error("❌ Password change email failed:", err.message);
+  }
+}
+// ============================================================
+// 🔐 OTP EMAIL (Password Reset / Login / Verification)
+// ============================================================
+export async function sendOtpEmail({
+  to,
+  otp,
+  buyerName,
+  purpose = "verification",
+}) {
+  return sendVerificationCodeEmail({
+    to,
+    name: buyerName,
+    code: otp,
+    purpose: purpose === "password_reset"
+      ? "Password Reset"
+      : "Verification",
+  });
+}
+
+
+
+export async function sendVerificationCodeEmail({ to, name, code, purpose }) {
+  try {
+    const transport = getTransporter();
+    
+    await transport.sendMail({
+      from: `Flyhub Security <${process.env.EMAIL_USER}>`,
+      to,
+      subject: `Your ${purpose} Verification Code`,
+      html: `
+        <div style="font-family:Arial,sans-serif;padding:20px;background:#f8f9fb;border-radius:10px;">
+          <h2 style="color:#1a0a5b;">🔐 ${purpose} Verification</h2>
+          <p>Hi ${name || "User"},</p>
+          <p>Your verification code is:</p>
+          <div style="background:#1a0a5b;color:white;padding:15px;border-radius:8px;font-size:24px;font-weight:bold;text-align:center;letter-spacing:5px;margin:20px 0;">
+            ${code}
+          </div>
+          <p>This code will expire in <b>10 minutes</b>.</p>
+          <p>If you didn't request this, please ignore this email.</p>
+          <br/>
+          <p style="color:#666;font-size:12px;">– Flyhub Security Team</p>
+        </div>
+      `,
+    });
+
+    console.log("✅ Verification code email sent to:", to);
+  } catch (err) {
+    console.error("❌ Verification email failed:", err.message);
+    throw err;
+  }
+};

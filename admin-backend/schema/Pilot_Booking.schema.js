@@ -37,6 +37,12 @@ export const pilotBookingTypeDefs = gql`
     endTime: String!
   }
 
+  type DeleteResponse {
+  success: Boolean!
+  message: String!
+}
+
+
   type BookPilotResponse {
     success: Boolean!
     message: String!
@@ -53,7 +59,7 @@ export const pilotBookingTypeDefs = gql`
     getSellerApprovedPilotBookings(sellerId: String!): [PilotBooking!]!
     getSellerRejectedPilotBookings(sellerId: String!): [PilotBooking!]!
     getSellerCompletedPilotBookings(sellerId: String!): [PilotBooking!]!
-
+   
 
     getAllPilotBookings: [PilotBooking!]!
   }
@@ -70,6 +76,11 @@ export const pilotBookingTypeDefs = gql`
     bookPilot(input: BookPilotInput!): BookPilotResponse!
 
     updatePilotBookingStatus(bookingId: String!, status: String!): PilotBooking!
+    deletePilotBookingByBuyer(
+  bookingId: String!
+  buyerId: String!
+): DeleteResponse!
+
   }
 
   extend type Subscription {

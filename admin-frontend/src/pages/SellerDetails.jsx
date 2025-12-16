@@ -7,16 +7,10 @@ import {
   FaEye,
   FaUserCircle,
   FaBuilding,
-  FaEnvelope,
-  FaPhone,
   FaMapMarkerAlt,
   FaCalendarAlt,
   FaFilter,
-  FaStar,
-  FaChartLine,
-  FaStore,
   FaUserCheck,
-  FaUserTimes,
   FaDownload,
   FaPlus
 } from 'react-icons/fa';

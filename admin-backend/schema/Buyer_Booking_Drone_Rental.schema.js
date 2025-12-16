@@ -22,6 +22,11 @@ type Buyer
  buyerId:String,
  name:String,
 }
+ type DeleteResponse {
+  success: Boolean!
+  message: String!
+}
+
 
   extend type Query {
     getAllDroneRentals: [DroneRental]
@@ -57,7 +62,10 @@ type Buyer
       rentalId: String!
     ): DroneRental
 
-    deleteDroneRental(drone_rental_id: String!): DroneRental
+    deleteDroneRentalByBuyer(
+  drone_rental_id: String!
+): DeleteResponse
+
 
     updateDroneRentalStatus(
       drone_rental_id: String!

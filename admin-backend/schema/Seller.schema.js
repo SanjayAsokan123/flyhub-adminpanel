@@ -37,6 +37,7 @@ export const sellerTypeDefs = gql`
     approved
     rejected
     suspended
+    deactivated
   }
 
   input SellerInput {
@@ -90,5 +91,8 @@ export const sellerTypeDefs = gql`
     updateSeller(customId: String!, input: SellerInput!): Seller
     updateSellerFcmToken(customId: String!, fcmToken: String!): UpdateTokenResponse!
     removeSellerFcmToken(customId: String!, fcmToken: String!): UpdateTokenResponse!
+    deactivateSeller(customId: ID!, reason: String!): Seller!
+    activateSeller(customId: ID!): Seller!
+    changeSellerPassword(customId: ID!, newPassword: String!): Seller!
   }
 `;

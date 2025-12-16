@@ -7,20 +7,13 @@ import { Part } from "../models/Parts.model.js";
 import { Accessory } from "../models/Accessories.model.js";
 import { Seller } from "../models/Seller.model.js";
 import  Admin  from "../models/Admin.model.js";
-
 import { sendSellerStatusMail } from "../utils/emailService.js";
 import { createSellerNotification } from "../utils/createSellerNotification.js";
 import { createBuyerNotification } from "../utils/createBuyerNotification.js";
-
 import { sendPushNotification } from "../utils/pushNotification.js";
 import { sendWhatsappMessage } from "../utils/firebaseWhatsapp.js";
-
 import { ORDER_STATUS } from "../utils/orderStatus.js";
 
-
-// ---------------------------------------------------------
-// Utility: Fetch item details
-// ---------------------------------------------------------
 async function getProductDetails(productId, type) {
   switch (type?.toLowerCase()) {
     case "drone":
@@ -57,14 +50,8 @@ export const orderResolvers = {
     },
   },
 
-  // ---------------------------------------------------------
-  // MUTATIONS START
-  // ---------------------------------------------------------
   Mutation: {
 
-    // -----------------------------
-    // Razorpay — Create Order
-    // -----------------------------
     createRazorpayOrder: async (_, { amount }) => {
       try {
         const order = await razorpay.orders.create({
@@ -79,9 +66,6 @@ export const orderResolvers = {
       }
     },
 
-    // -----------------------------
-    // Razorpay — Verify Payment
-    // -----------------------------
     verifyRazorpayPayment: async (_, { razorpay_order_id, razorpay_payment_id, razorpay_signature, buyerId }) => {
       const body = razorpay_order_id + "|" + razorpay_payment_id;
 
@@ -116,9 +100,6 @@ export const orderResolvers = {
       return paymentValid;
     },
 
-    // -----------------------------
-    // CREATE ORDER
-    // -----------------------------
     createOrder: async (_, { buyerData, items, paymentData }, { pubsub }) => {
       try {
         if (!buyerData?.buyerId || !buyerData?.name)
@@ -130,7 +111,6 @@ export const orderResolvers = {
         const buyer = await Buyer.findOne({ buyerId: buyerData.buyerId });
         if (!buyer) throw new Error("Buyer not found");
 
-        // Build detailed items
         const detailedItems = await Promise.all(
           items.map(async (item) => {
             const product = await getProductDetails(item.productId, item.type);
@@ -150,7 +130,6 @@ export const orderResolvers = {
           0
         );
 
-        // CREATE ORDER NOW
         const order = new Order({
           orderId: `FHO-${Date.now().toString().slice(-8)}`,
           buyer: buyerData,
@@ -165,7 +144,6 @@ export const orderResolvers = {
 
         await order.save();
 
-        // HIGH VALUE ORDER ALERT (AFTER order exists)
         const HIGH_VALUE_LIMIT = process.env.HIGH_VALUE_ORDER_LIMIT || 50000;
         if (totalAmount >= HIGH_VALUE_LIMIT) {
           const admins = await Admin.find();
@@ -181,7 +159,6 @@ export const orderResolvers = {
           }
         }
 
-        // BUYER NOTIFICATION
         await createBuyerNotification({
           buyerId: buyer.buyerId,
           title: "🛍 Order Placed Successfully",
@@ -200,7 +177,6 @@ export const orderResolvers = {
           );
         }
 
-        // SELLER NOTIFICATIONS
         const sellerIds = [...new Set(detailedItems.map((i) => i.sellerId))];
         const sellers = await Seller.find({ customId: sellerIds });
 
@@ -241,9 +217,6 @@ export const orderResolvers = {
       }
     },
 
-    // -----------------------------
-    // UPDATE ORDER STATUS
-    // -----------------------------
     updateOrderStatus: async (_, { orderId, status }, { pubsub }) => {
       const order = await Order.findOne({ orderId });
       if (!order) throw new Error("Order not found");
@@ -277,7 +250,6 @@ export const orderResolvers = {
         url: `/buyer/orders/${orderId}`,
       });
 
-      // PUSH notification
       if (buyer.fcmTokens?.length > 0) {
         await sendPushNotification(
           buyer.fcmTokens,
@@ -287,7 +259,6 @@ export const orderResolvers = {
         );
       }
 
-      // WhatsApp notifications
       if (status === ORDER_STATUS.SHIPPED) {
         await sendWhatsappMessage(
           buyer.phoneNumber,
@@ -305,9 +276,6 @@ export const orderResolvers = {
       return order;
     },
 
-    // -----------------------------
-    // CANCEL ORDER
-    // -----------------------------
     cancelOrder: async (_, { orderId, buyerId }, { pubsub }) => {
       const order = await Order.findOne({ orderId });
       if (!order) throw new Error("Order not found");

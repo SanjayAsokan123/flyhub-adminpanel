@@ -1,5 +1,5 @@
 import JobApplication from "../models/JobBooking.model.js";
-import { HireJob } from "../models/HireJob.model.js";
+import { HireJob } from "../models/Hirejob.model.js";
 import { Buyer } from "../models/Buyer.model.js";
 
 export const jobApplicationResolvers = {

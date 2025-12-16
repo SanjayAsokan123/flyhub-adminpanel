@@ -9,7 +9,7 @@ const ProductSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   image: { type: String },
   description: { type: String },
-
+  quantity: { type: Number, default: 0 },
   // drone | part | accessory
   category: { type: String, required: true },
 

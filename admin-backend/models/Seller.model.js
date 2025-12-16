@@ -28,7 +28,7 @@ const SellerSchema = new mongoose.Schema(
     role: { type: String, default: "seller" },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected", "suspended"],
+      enum: ["pending", "approved", "rejected", "suspended" , "deactivated"],
       default: "pending",
       index: true,
     },
@@ -37,7 +37,9 @@ const SellerSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
-
+    deactivatedAt: { type: Date, default: null },
+    deactivatedReason: { type: String, default: null },
+    
     fcmToken: {
       type: String,
       default: null,

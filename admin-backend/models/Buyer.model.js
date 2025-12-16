@@ -38,6 +38,21 @@ const BuyerSchema = new mongoose.Schema(
 
     fcmToken: { type: String, default: null },
     fcmTokens: { type: [String], default: [] },
+    otp: {
+      type: String,
+    },
+    otpExpiresAt: {
+      type: Date,
+    },
+    otpAttempts: {
+      type: Number,
+      default: 0,
+    },
+    otpVerified: {
+  type: Boolean,
+  default: false,
+},
+
   },
   { timestamps: true }
 );

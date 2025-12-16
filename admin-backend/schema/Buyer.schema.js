@@ -17,6 +17,8 @@ export const buyerTypeDefs = gql`
     createdAt: Date
     updatedAt: Date
     fcmTokens: [String]
+    otp: String
+    otpExpiresAt: Date
   }
 
   input BuyerInput {
@@ -50,12 +52,60 @@ export const buyerTypeDefs = gql`
     buyer: Buyer
   }
 
+  type ChangePasswordResponse {
+    success: Boolean!
+    message: String!
+    buyerId: String
+    email: String
+  }
+
+  type OtpResponse {
+    success: Boolean!
+    message: String!
+    email: String
+    expiresIn: String
+  }
+
+  type OtpVerificationResponse {
+    success: Boolean!
+    message: String!
+    email: String
+    expiresAt: Date
+  }
+
+  type DeleteAccountResponse {
+  success: Boolean!
+  message: String!
+  buyerId: String
+  email: String
+  deletedAt: String
+}
+
+type DeleteAccountCompleteResponse {
+  success: Boolean!
+  message: String!
+  buyerId: String
+  email: String
+  deletedAt: String
+  deletedCounts: DeletedCounts
+}
+
+type DeletedCounts {
+  buyers: Int
+  notifications: Int
+  orders: Int
+  addresses: Int
+  wishlist: Int
+  other: Int
+}
+
   extend type Query {
     buyers: [Buyer]
     buyer(buyerId: ID!): Buyer
     buyerNotifications(buyerId: String!): [BuyerNotification]
     buyerByEmail(email: String, username: String, phoneNumber: String, buyerId: String): Buyer
     getBuyerByLoginKey(key: String!): Buyer
+    verifyBuyerOtp(email: String!, otp: String!): OtpVerificationResponse!
   }
 
   extend type Mutation {
@@ -64,18 +114,35 @@ export const buyerTypeDefs = gql`
       email: String!
       phoneNumber: String!
       password: String!
-      firebaseUid: String!
+      firebaseUid: String
     ): Buyer
 
     loginBuyer(input: String!, password: String!): Buyer!
-    loginBuyerGoogle(firebaseUid: String!, email: String!): Buyer!
+    loginBuyerGoogle(firebaseUid: String!): Buyer!
 
     updateBuyer(buyerId: ID!, input: BuyerInput!): Buyer!
     deleteBuyer(buyerId: ID!): String
 
     updateBuyerFcmToken(buyerId: String!, token: String!): UpdateTokenResponse
     markBuyerNotificationRead(notificationId: String!): NotificationResponse
+    removeBuyerFcmToken(buyerId: String!, token: String!): UpdateTokenResponse
+    
+    deleteBuyerAccount(email: String!, password: String!): DeleteAccountResponse!
 
+    deleteBuyerAccountWithFirebase(email: String!, firebaseUid: String!): DeleteAccountResponse!
+
+    deleteBuyerAccountCompletely(email: String!, firebaseUid: String!): DeleteAccountCompleteResponse!
+
+    changeBuyerPassword(
+      email: String!, 
+      newPassword: String!, 
+      otp: String!
+    ): ChangePasswordResponse!
+    
+    requestBuyerPasswordOtp(email: String!): OtpResponse!
+    
+    verifyBuyerOtp(email: String!, otp: String!): OtpVerificationResponse!
+    
     testPush: BuyerNotification
   }
 

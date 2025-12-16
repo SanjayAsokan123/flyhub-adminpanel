@@ -1,5 +1,5 @@
 // backend/utils/loginIndex.js
-import { firestore } from "../config/firebaseAdmin.js";
+import { firestore } from "../middleware/firebaseAdmin.js";
 
 /* -------------------------------------------------------------------------- */
 /*                               Phone Normalizer                             */

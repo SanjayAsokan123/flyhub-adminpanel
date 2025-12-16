@@ -8,56 +8,84 @@ export const droneRentalBookingResolvers = {
   Query: {
     getDroneRentalById: async (_, { drone_rental_id }) =>
       DroneRental.findOne({ drone_rental_id }),
-      getAllDroneRentals: async () => {
-        return await DroneRental.find({}).sort({ createdAt: -1 }); },
+    getAllDroneRentals: async () => {
+      return await DroneRental.find({}).sort({ createdAt: -1 });
+    },
+    // getDroneRentalsBySellerId: async (_, { sellerId }) =>
+    //   DroneRental.find({ sellerId }).sort({ createdAt: -1 }),
+    getDroneRentalsByBuyerId: async (_, { buyerId }) =>
+      DroneRental.find({ buyerId }).sort({ createdAt: -1 }),
+
+    // getConfirmedDroneRentalsByBuyer: async (_, { buyerId }) => {
+    //   return await DroneRental.find({ buyerId, status: "confirmed" });
+    // },
+
+    // getPendingDroneRentalsByBuyer: async (_, { buyerId }) => {
+    //   return await DroneRental.find({ buyerId, status: "pending" });
+    // },
+
+    // getCancelledDroneRentalsByBuyer: async (_, { buyerId }) => {
+    //   return await DroneRental.find({ buyerId, status: "cancelled" });
+    // },
+
+    getBuyerfirebaseUidInDroneRental: async (_, { firebaseUid }) => {
+      const buyer = await Buyer.findOne({ firebaseUid });
+
+      if (!buyer) {
+        throw new Error("Buyer not found");
+        console.log('buyer not found');
+      }
+
+      return buyer;
+    },
+
+    getConfirmedDroneRentalsByBuyer: async (_, { buyerId }) =>
+      DroneRental.find({
+        buyerId,
+        status: "confirmed",
+        buyerDeleted: false,
+      }),
+
+    getPendingDroneRentalsByBuyer: async (_, { buyerId }) =>
+      DroneRental.find({
+        buyerId,
+        status: "pending",
+        buyerDeleted: false,
+      }),
+
+    getCancelledDroneRentalsByBuyer: async (_, { buyerId }) =>
+      DroneRental.find({
+        buyerId,
+        status: "cancelled",
+        buyerDeleted: false,
+      }),
+
     getDroneRentalsBySellerId: async (_, { sellerId }) =>
-      DroneRental.find({ sellerId }).sort({ createdAt: -1 }),
-  getDroneRentalsByBuyerId: async (_, { buyerId }) =>
-    DroneRental.find({ buyerId }).sort({ createdAt: -1 }),
-
-  getConfirmedDroneRentalsByBuyer: async (_, { buyerId }) => {
-    return await DroneRental.find({ buyerId, status: "confirmed" });
-  },
-
-  getPendingDroneRentalsByBuyer: async (_, { buyerId }) => {
-    return await DroneRental.find({ buyerId, status: "pending" });
-  },
-
-  getCancelledDroneRentalsByBuyer: async (_, { buyerId }) => {
-    return await DroneRental.find({ buyerId, status: "cancelled" });
-  },
-
-  getBuyerfirebaseUidInDroneRental: async (_, { firebaseUid }) => {
-                    const buyer = await Buyer.findOne({ firebaseUid });
-
-                    if (!buyer) {
-                      throw new Error("Buyer not found");
-                      console.log('buyer not found');
-                    }
-
-                    return buyer;
-                  },
+      DroneRental.find({
+        sellerId,
+        sellerDeleted: false,
+      }).sort({ createdAt: -1 }),
 
   },
 
 
   Mutation: {
-    createDroneRental: async (_, { name, phone, location, rentalDate, rentalId ,buyerId }) => {
+    createDroneRental: async (_, { name, phone, location, rentalDate, rentalId, buyerId }) => {
       const listing = await Rental.findOne({ rentalId });
       if (!listing) throw new Error("Invalid rentalId");
 
       const seller = await Seller.findOne({ customId: listing.sellerId }).select("email phoneNumber");
-       const buyer = await Buyer.findOne({ buyerId: listing.buyerId }).select("buyerId");
+      const buyer = await Buyer.findOne({ buyerId: listing.buyerId }).select("buyerId");
       const newBooking = new DroneRental({
         name,
         phone,
         location,
         rentalDate: new Date(rentalDate),
         rentalId,
-       sellerId: listing.sellerId,
-        buyerId:buyerId,
-        sellerEmail: seller?.email ,
-        sellerPhone: seller?.phoneNumber ,
+        sellerId: listing.sellerId,
+        buyerId: buyerId,
+        sellerEmail: seller?.email,
+        sellerPhone: seller?.phoneNumber,
         status: "pending",
       });
 
@@ -103,11 +131,62 @@ export const droneRentalBookingResolvers = {
       return updated;
     },
 
-    deleteDroneRental: async (_, { drone_rental_id }) => {
-      const deleted = await DroneRental.findOneAndDelete({ drone_rental_id });
-      if (!deleted) throw new Error(`Booking ${drone_rental_id} not found`);
-      return deleted;
+    deleteDroneRentalByBuyer: async (_, { drone_rental_id }) => {
+      const rental = await DroneRental.findOne({ drone_rental_id });
+
+      if (!rental) {
+        return {
+          success: false,
+          message: "Booking not found",
+        };
+      }
+
+
+      if (rental.status === "pending") {
+        await DroneRental.deleteOne({ drone_rental_id });
+
+        return {
+          success: true,
+          message: "Pending booking deleted successfully",
+        };
+      }
+
+
+      if (rental.status === "confirmed") {
+        await DroneRental.deleteOne({ drone_rental_id });
+
+        if (rental.sellerEmail) {
+          await sendSellerStatusMail({
+            to: rental.sellerEmail,
+            productType: "Drone Rental",
+            productName: rental.drone_rental_id,
+            status: "Deleted by Buyer",
+          });
+        }
+
+        return {
+          success: true,
+          message: "Booking deleted & seller notified",
+        };
+      }
+
+
+      if (rental.status === "cancelled") {
+        rental.buyerDeleted = true;
+        await rental.save();
+
+        return {
+          success: true,
+          message: "Removed from your bookings",
+        };
+      }
+
+      return {
+        success: false,
+        message: "Invalid booking state",
+      };
     },
+
 
     updateDroneRentalStatus: async (_, { drone_rental_id, status }) => {
       const updated = await DroneRental.findOneAndUpdate(

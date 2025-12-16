@@ -32,7 +32,7 @@ if (!admin.apps.length) {
     }
 
     if (!credentials) {
-      console.warn("⚠️ Firebase credentials missing — Admin SDK not initialized.");
+      console.warn("⚠ Firebase credentials missing — Admin SDK not initialized.");
     } else {
       app = admin.initializeApp({
         credential: credentials,
@@ -51,7 +51,7 @@ if (!admin.apps.length) {
     console.error("❌ Firebase Admin initialization failed:", error);
   }
 } else {
-  console.log("ℹ️ Firebase Admin already initialized");
+  console.log("ℹ Firebase Admin already initialized");
   app = admin.app();
   bucket = admin.storage().bucket();
   auth = admin.auth();

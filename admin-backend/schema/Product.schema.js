@@ -7,6 +7,7 @@ export const productTypeDef = gql`
     brand: String
     price: Float!
     image: String
+    quantity: Int
     description: String
     category: String!
     status: String

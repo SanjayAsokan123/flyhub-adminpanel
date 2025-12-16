@@ -18,7 +18,9 @@ const pilotBookingSchema = new mongoose.Schema(
       type: String,
       default: "pending",
       enum: ["pending", "approved", "rejected", "completed"],
-    }
+    },
+    buyerDeleted: { type: Boolean, default: false },
+    sellerDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
