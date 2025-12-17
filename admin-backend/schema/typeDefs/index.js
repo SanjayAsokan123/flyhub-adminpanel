@@ -24,6 +24,7 @@ import { cartTypeDefs } from "../Cart.schema.js";
 import { wishlistTypeDefs } from "../Wishlist.schema.js";
 import { productTypeDef } from "../Product.schema.js";
 import { addressTypeDefs } from "../BuyerAddress.schema.js";
+import { discountTypeDefs } from "../DiscountSet.schema.js";
 
 export const typeDefs = [
   baseTypeDefs,
@@ -50,4 +51,5 @@ export const typeDefs = [
   wishlistTypeDefs,
   productTypeDef,
   addressTypeDefs,
+  discountTypeDefs,
 ];

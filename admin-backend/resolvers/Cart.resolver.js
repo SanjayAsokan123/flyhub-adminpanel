@@ -63,17 +63,22 @@ export const cartResolvers = {
   },
 
   Mutation: {
-    async addToCart(_, { buyerId, productId }) {
-      let item = await Cart.findOne({ buyerId, productId });
+   async addToCart(_, { buyerId, productId, quantity = 1 }) {
+  let item = await Cart.findOne({ buyerId, productId });
 
-      if (item) {
-        item.quantity += 1;
-        await item.save();
-        return item;
-      }
+  if (item) {
+    item.quantity += quantity; // 🔥 overwrite instead of increment
+    await item.save();
+    return item;
+  }
 
-      return await Cart.create({ buyerId, productId, quantity: 1 });
-    },
+  return await Cart.create({
+    buyerId,
+    productId,
+    quantity,
+  });
+},
+
 
     async updateCartQty(_, { buyerId, productId, quantity }) {
       return await Cart.findOneAndUpdate(

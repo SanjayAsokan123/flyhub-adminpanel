@@ -38,7 +38,7 @@ type Buyer
   }
 
   extend type Mutation {
-    addToCart(buyerId: String!, productId: String!): CartItem
+    addToCart(buyerId: String!, productId: String!, quantity: Int): CartItem
     updateCartQty(buyerId: String!, productId: String!, quantity: Int): CartItem
     removeFromCart(buyerId: String!, productId: String!): Boolean
   }

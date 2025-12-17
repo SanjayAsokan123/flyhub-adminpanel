@@ -22,6 +22,7 @@ import { cartResolvers } from "../Cart.resolver.js";
 import { wishlistResolvers } from "../Wishlist.resolver.js";
 import { productResolvers } from "../Product.resolver.js";
 import { addressResolvers } from "../BuyerAddress.resolver.js";
+import { discountResolvers } from "../DiscountSet.resolver.js";
 
 export const resolves = [
   droneResolvers,
@@ -48,4 +49,5 @@ export const resolves = [
   wishlistResolvers,
   productResolvers,
   addressResolvers,
+  discountResolvers,
 ];

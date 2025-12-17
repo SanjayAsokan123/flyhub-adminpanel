@@ -91,15 +91,14 @@ input SellerProfileInput {
     createSeller(input: SellerInput!): Seller!
     changeSellerStatus(customId: ID!, status: SellerStatus!): Seller!
     deleteSeller(customId: ID!): Seller
-    #updateSeller(customId: String!, input: SellerInput!): Seller
-    updateSellerProfile(
-    customId: String!
-    input: SellerProfileInput!
-  ): Seller
+  #updateSeller(customId: String!, input: SellerInput!): Seller
+    updateSellerProfile(customId: String!, input: SellerProfileInput!): Seller
+    
     updateSellerFcmToken(customId: String!, fcmToken: String!): UpdateTokenResponse!
     removeSellerFcmToken(customId: String!, fcmToken: String!): UpdateTokenResponse!
     deactivateSeller(customId: ID!, reason: String!): Seller!
     activateSeller(customId: ID!): Seller!
+    activateSeller(customId: String! , email:String , otp:String): Seller!
     changeSellerPassword(customId: ID!, newPassword: String!): Seller!
   }
 `;

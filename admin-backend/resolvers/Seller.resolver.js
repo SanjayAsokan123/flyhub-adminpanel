@@ -15,6 +15,7 @@ import {Drone} from "../models/Drone.model.js";
 const messaging = admin.messaging();
 
 
+
 function isValidEmail(email) {
   if (!email) return false;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -563,11 +564,40 @@ export const sellerResolvers = {
 
   // -------------  Re-activate a deactivated seller ----------------
 
-    activateSeller: async (_, { customId }, { pubsub }) => {
-      const seller = await Seller.findOne({ customId });
+      activateSeller: async (_, { email , customId , otp }, { pubsub }) => {
+            // 1. Validate inputs
+      if (!email || !customId || !otp) {
+        throw new Error("Email, customId, and OTP are required");
+      }
 
+      // 2. Find seller
+      const seller = await Seller.findOne({ email });
       if (!seller) throw new Error("Seller not found");
 
+      // 3. Verify customId
+      if (seller.customId !== customId) {
+        throw new Error("Invalid seller ID");
+      }
+
+      // 4. Check if deactivated
+      // if (seller.status !== "deactivated") {
+      //   throw new Error("Account is not deactivated");
+      // }
+
+      // 5. Verify OTP
+      if (!seller.otp || seller.otp !== otp) {
+        throw new Error("Invalid OTP");
+      }
+
+      if (!seller.otpExpiresAt || seller.otpExpiresAt < new Date()) {
+        throw new Error("OTP has expired");
+      }
+
+      // 6. Clear OTP
+      seller.otp = null;
+      seller.otpExpiresAt = null;
+
+      // 7. Activate seller and products (same as above)
       seller.status = "approved";
       seller.deactivatedAt = null;
       seller.deactivatedReason = null;
@@ -604,8 +634,6 @@ export const sellerResolvers = {
           { $set: { status: "approved" } }
         ),
       ]);
-
-
       // Notify seller
 
       try {
@@ -619,7 +647,6 @@ export const sellerResolvers = {
 
       return seller;
     },
-
     // ------------------------------- CHANGE SELLER PASSWORDS -------------
 
     changeSellerPassword: async (_, { customId, newPassword }) => {

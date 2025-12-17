@@ -13,19 +13,40 @@ import { createBuyerNotification } from "../utils/createBuyerNotification.js";
 import { sendPushNotification } from "../utils/pushNotification.js";
 import { sendWhatsappMessage } from "../utils/firebaseWhatsapp.js";
 import { ORDER_STATUS } from "../utils/orderStatus.js";
+import Cart from "../models/Cart.model.js";
 
 async function getProductDetails(productId, type) {
   switch (type?.toLowerCase()) {
     case "drone":
-      return await Drone.findOne({ droneId: productId }).select("name price sellerId").lean();
+      return await Drone.findOne({ droneId: productId })
+        .select("name price sellerId")
+        .lean();
     case "part":
-      return await Part.findOne({ partId: productId }).select("name price sellerId").lean();
+      return await Part.findOne({ partId: productId })
+        .select("name price sellerId")
+        .lean();
     case "accessory":
-      return await Accessory.findOne({ accessoryId: productId }).select("name price sellerId").lean();
+      return await Accessory.findOne({ accessoryId: productId })
+        .select("name price sellerId")
+        .lean();
     default:
       return null;
   }
 }
+
+// ✅ PLACE IT HERE
+const normalizeType = (type) => {
+  const map = {
+    drone: "drone",
+    drones: "drone",
+    part: "part",
+    parts: "part",
+    accessory: "accessory",
+    accessories: "accessory",
+  };
+  return map[type?.toLowerCase()];
+};
+
 
 export const orderResolvers = {
   Query: {
@@ -99,6 +120,7 @@ export const orderResolvers = {
 
       return paymentValid;
     },
+    
 
     createOrder: async (_, { buyerData, items, paymentData }, { pubsub }) => {
       try {
@@ -110,25 +132,47 @@ export const orderResolvers = {
 
         const buyer = await Buyer.findOne({ buyerId: buyerData.buyerId });
         if (!buyer) throw new Error("Buyer not found");
-
         const detailedItems = await Promise.all(
-          items.map(async (item) => {
-            const product = await getProductDetails(item.productId, item.type);
-            return {
-              productId: item.productId,
-              type: item.type.charAt(0).toUpperCase() + item.type.slice(1).toLowerCase(),
-              name: product?.name,
-              price: product?.price || 0,
-              quantity: item.quantity || 1,
-              sellerId: product?.sellerId,
-            };
-          })
-        );
+  items.map(async (item) => {
+    if (!item.productId) {
+      throw new Error("Item productId missing");
+    }
+
+    const normalizedType = item.type; // already enum-safe
+
+    const product = await getProductDetails(
+      item.productId,
+      normalizedType.toLowerCase()
+    );
+
+    if (!product) {
+      throw new Error(`Invalid product: ${item.productId}`);
+    }
+
+    return {
+      productId: item.productId,
+      type: normalizedType,      // "Drone" | "Part" | ...
+      name: product.name,
+      price: product.price,
+      quantity: item.quantity,
+      sellerId: product.sellerId,
+    };
+  })
+);
+
+
+
+
 
         const totalAmount = detailedItems.reduce(
           (sum, i) => sum + i.price * i.quantity,
           0
         );
+        console.log(
+  "FINAL ORDER ITEMS TYPES:",
+  detailedItems.map(i => i.type)
+);
+
 
         const order = new Order({
           orderId: `FHO-${Date.now().toString().slice(-8)}`,
@@ -143,6 +187,7 @@ export const orderResolvers = {
         });
 
         await order.save();
+        await Cart.deleteMany({ buyerId: buyer.buyerId });
 
         const HIGH_VALUE_LIMIT = process.env.HIGH_VALUE_ORDER_LIMIT || 50000;
         if (totalAmount >= HIGH_VALUE_LIMIT) {
