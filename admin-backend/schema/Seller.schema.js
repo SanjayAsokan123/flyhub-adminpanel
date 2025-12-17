@@ -4,32 +4,23 @@ export const sellerTypeDefs = gql`
   type Seller {
     customId: ID
     firebaseUid: String
-
     name: String
     companyName: String
     PANnumber: String
     gstNumber: String
     address: String
-
     bankIFCnumber: String
     bankAccountNumber: String
     authorized: String
-
     email: String
     phoneNumber: String
-
     status: SellerStatus
-
     shippingAddresses: [String!]
     pickupAddresses: [String!]
-
     companyPan: String
     bankName: String
-
     fcmTokens: [String!]
     fcmToken: String
-
-    Drones: [Drone!]
   }
 
   enum SellerStatus {
