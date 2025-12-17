@@ -23,6 +23,8 @@ const serviceBookingSchema = new mongoose.Schema(
     serviceId: { type: String, required: true },
     buyerId :{type:String,required:true},
     serviceBookingId: { type: String, unique: true },
+    // isBuyerStatusViewed: { type: Boolean, default: false },
+    // isSellerStatusViewed: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

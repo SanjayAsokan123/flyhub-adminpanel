@@ -2,7 +2,7 @@ import {Seller} from "../models/Seller.model.js";
 import {Service} from "../models/Service.model.js";
 import {Accessory} from "../models/Accessories.model.js";
 import {Part} from "../models/Parts.model.js";
-import {HireJob} from "../models/Hirejob.model.js";
+// import {HireJob} from "../models/Hirejob.model.js";
 import {Rental} from "../models/Rental.model.js";
 // import {Hirepilot} from "../models/Hirepilot.model.js";
 
@@ -15,7 +15,7 @@ export const getSellerViewResolver = {
     },
   },
 
-  SellerView: {
+ SellerView : {
     parts: async(parent) =>
       await Part.find({ sellerId: parent.customId }),
 

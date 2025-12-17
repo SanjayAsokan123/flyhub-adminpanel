@@ -38,7 +38,6 @@ export const returnTypeDefs = gql`
    type: String!
    reason: String!
    deliveryDate: String!
-   proofUrl: String
  }
 
  extend type Query {

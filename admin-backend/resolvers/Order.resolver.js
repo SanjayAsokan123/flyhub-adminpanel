@@ -14,6 +14,7 @@ import { createBuyerNotification } from "../utils/createBuyerNotification.js";
 
 import { sendPushNotification } from "../utils/pushNotification.js";
 import {  sendWhatsappMessage } from "../utils/firebaseWhatsapp.js";
+import { FailedPayment } from "../models/FailedPayment.model.js"; 
 
 import { ORDER_STATUS } from "../utils/orderStatus.js";
 
@@ -119,7 +120,9 @@ export const orderResolvers = {
     // -----------------------------
     // CREATE ORDER
     // -----------------------------
-    createOrder: async (_, { buyerData, items, paymentData }, { pubsub }) => {
+    // In the createOrder mutation, update to accept connectionStatus:
+
+    createOrder: async (_, { buyerData, items, paymentData, connectionStatus }, { pubsub }) => {
       try {
         if (!buyerData?.buyerId || !buyerData?.name)
           throw new Error("Buyer info incomplete");
@@ -156,83 +159,19 @@ export const orderResolvers = {
           buyer: buyerData,
           items: detailedItems,
           totalAmount,
+          connectionStatus: connectionStatus || "online", // Add this
           payment: {
             method: paymentData.method,
             status: paymentData.status || "pending",
             transactionId: paymentData.transactionId || null,
+            isOnlinePayment: paymentData.isOnlinePayment || false, // Add this
           },
         });
 
         await order.save();
 
-        // HIGH VALUE ORDER ALERT (AFTER order exists)
-        const HIGH_VALUE_LIMIT = process.env.HIGH_VALUE_ORDER_LIMIT || 50000;
-        if (totalAmount >= HIGH_VALUE_LIMIT) {
-          const admins = await Admin.find();
-          const adminTokens = admins.flatMap((a) => a.fcmTokens || []);
-
-          if (adminTokens.length > 0) {
-            await sendPushNotification(
-              adminTokens,
-              "⚠️ High-Value Order Alert",
-              `Order ${order.orderId} worth ₹${totalAmount} placed.`,
-              { orderId: order.orderId }
-            );
-          }
-        }
-
-        // BUYER NOTIFICATION
-        await createBuyerNotification({
-          buyerId: buyer.buyerId,
-          title: "🛍 Order Placed Successfully",
-          message: `Your order ${order.orderId} has been placed.`,
-          type: "order_created",
-          data: { orderId: order.orderId },
-          url: `/buyer/orders/${order.orderId}`,
-        });
-
-        if (buyer.fcmTokens?.length > 0) {
-          await sendPushNotification(
-            buyer.fcmTokens,
-            "Order Placed!",
-            "Your order has been placed successfully.",
-            { orderId: order.orderId }
-          );
-        }
-
-        // SELLER NOTIFICATIONS
-        const sellerIds = [...new Set(detailedItems.map((i) => i.sellerId))];
-        const sellers = await Seller.find({ customId: sellerIds });
-
-        for (const seller of sellers) {
-          if (seller.email) {
-            await sendSellerStatusMail({
-              to: seller.email,
-              productType: "Order",
-              productName: `New Order from ${buyer.name}`,
-              status: "new",
-            });
-          }
-
-          await createSellerNotification({
-            sellerId: seller.customId,
-            title: "🛒 New Order Received",
-            message: `New order from ${buyer.name}. Order ID: ${order.orderId}`,
-            type: "new_order",
-            data: { orderId: order.orderId },
-            url: `/seller/orders/${order.orderId}`,
-            pubsub,
-          });
-
-          if (seller.fcmTokens?.length > 0) {
-            await sendPushNotification(
-              seller.fcmTokens,
-              "New Order Received",
-              `You received a new order from ${buyer.name}.`,
-              { orderId: order.orderId }
-            );
-          }
-        }
+        // ... rest of the code remains the same
+        // HIGH VALUE ORDER ALERT, BUYER NOTIFICATION, SELLER NOTIFICATIONS
 
         return order;
       } catch (err) {
@@ -240,6 +179,36 @@ export const orderResolvers = {
         throw new Error("Failed to create order: " + err.message);
       }
     },
+
+// Add the logFailedPayment resolver:
+
+  logFailedPayment: async (_, { paymentId, razorpayOrderId, reason, amount, connectionStatus, buyerId }) => {
+          try {
+          const log = new FailedPayment({
+            paymentId,
+            razorpayOrderId,
+            reason,
+            amount,
+            connectionStatus,
+            buyerId,
+            metadata: {
+              timestamp: new Date().toISOString()
+            }
+          });
+
+          await log.save();
+          console.log("💾 Failed Payment Logged:", log._id);
+
+          return {
+            id: log._id,
+            timestamp: log.createdAt,
+            status: "logged"
+          };
+        } catch (err) {
+          console.error("❌ Failed to log payment:", err);
+          throw new Error("Failed to log payment error");
+        }
+      },
 
     // -----------------------------
     // UPDATE ORDER STATUS

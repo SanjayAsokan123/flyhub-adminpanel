@@ -107,9 +107,13 @@ export const SellerViewTypeDefs = gql`
 
    extend type Query {
         getSellerView(sellerId: String!): SellerView
+        
         getPartsBySeller(sellerId: String!): [partsView]
+        
         getAccessoriesBySeller(sellerId: String!): [accessoriesView]
+        
         getRentalsBySeller(sellerId: String!): [rentalsView]
+        
         getServicesBySeller(sellerId: String!): [ServicesView]
        }
 `;

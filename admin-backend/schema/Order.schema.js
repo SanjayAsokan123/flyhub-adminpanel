@@ -23,12 +23,14 @@ export const orderTypeDefs = gql`
     method: String
     status: String
     transactionId: String
+    isOnlinePayment: Boolean
   }
 
   input PaymentInput {
-    method: String
-    status: String
+    method: String!
+    status: String!
     transactionId: String
+    isOnlinePayment: Boolean!
   }
 
   type Order {
@@ -38,21 +40,28 @@ export const orderTypeDefs = gql`
     totalAmount: Float
     status: String
     payment: Payment
+    connectionStatus: String
     createdAt: String
   }
 
   input BuyerInput {
     buyerId: String!
-    name: String
-    email: String
-    phone: String
-    address: String
+    name: String!
+    email: String!
+    phone: String!
+    address: String!
   }
 
   input ItemInput {
-    productId: String
-    type: String
-    quantity: Int
+    productId: String!
+    type: String!
+    quantity: Int!
+  }
+
+  type FailedPaymentLog {
+    id: String
+    timestamp: String
+    status: String
   }
 
   extend type Query {
@@ -70,6 +79,7 @@ export const orderTypeDefs = gql`
       buyerData: BuyerInput!
       items: [ItemInput!]!
       paymentData: PaymentInput!
+      connectionStatus: String!
     ): Order
 
     createRazorpayOrder(amount: Int!): String
@@ -81,9 +91,17 @@ export const orderTypeDefs = gql`
       buyerId: String!
     ): Boolean
 
-    updateOrderStatus(orderId: String!, status: String!): Order   # ADDED
+    logFailedPayment(
+      paymentId: String
+      razorpayOrderId: String
+      reason: String!
+      amount: Float!
+      connectionStatus: String!
+    ): FailedPaymentLog
 
-    cancelOrder(orderId: String!, buyerId: String!): Order        # ADDED
+    updateOrderStatus(orderId: String!, status: String!): Order   
+
+    cancelOrder(orderId: String!, buyerId: String!): Order        
 
     deleteOrder(orderId: String!): Order
   }

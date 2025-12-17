@@ -1,7 +1,3 @@
-
-
-
-
 import { gql } from "apollo-server-express";
 
 export const ServiceBookingTypeDefs = gql`
@@ -11,7 +7,7 @@ export const ServiceBookingTypeDefs = gql`
   #   CONTACT TYPE
   # ==============================
   type Contact {
-    id: ID!                 # <-- Now correctly supported
+    id: ID!                 
     name: String!
     email: String!
     location: String!
@@ -108,7 +104,7 @@ export const ServiceBookingTypeDefs = gql`
 
     updateContact(id: ID!, input: UpdateContactInput!): ContactResponse
 
-    deleteContact(id: ID!): DeleteResponse
+    deleteServiceBookingContact(serviceBookingId: String!): DeleteResponse
   }
 
   # ==============================
@@ -124,6 +120,6 @@ export const ServiceBookingTypeDefs = gql`
   type DeleteResponse {
     success: Boolean!
     message: String
-    deletedId: ID
+    deletedId: String
   }
 `;

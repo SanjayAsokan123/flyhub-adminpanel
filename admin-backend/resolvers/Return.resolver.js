@@ -71,15 +71,14 @@ export const returnResolvers = {
 
         const returnId = await generateReturnId();
 
-        let proofUrl = data.proofUrl || null;
-        if (data.proofFile?.file) {
-          proofUrl = await uploadSingleFile(data.proofFile.file, "return-proofs");
-        }
+        // let proofUrl = data.proofUrl || null;
+        // if (data.proofFile?.file) {
+        //   proofUrl = await uploadSingleFile(data.proofFile.file, "return-proofs");
+        // }
 
         const newReturn = await ReturnRequest.create({
           returnId,
           ...data,
-          proofUrl,
           status: "requested",
         });
 

@@ -137,9 +137,17 @@ export const jobApplicationResolvers = {
       };
     },
 
-    deleteApplication: async (_, { id }) => {
-      const deleted = await JobApplication.findByIdAndDelete(id);
-
+    deleteJobApplication: async (_, { jobId }) => {
+      const deleted = await JobApplication.findOneAndDelete({ 
+        jobId , status: "pending"
+       });
+       if(!deleted){
+        return {
+          success: false,
+          message: "No pending application found for the given jobId.",
+          application: null,
+        };
+       }
       return {
         success: true,
         message: "Application deleted.",

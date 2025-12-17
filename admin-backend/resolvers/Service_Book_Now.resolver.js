@@ -428,14 +428,20 @@ export const ServiceBookingResolvers = {
       }
     },
 
-    async deleteContact(_, { id }) {
+    async deleteServiceBookingContact(_, { serviceBookingId }) {
       try {
-        await ServiceBooking.findByIdAndDelete(id);
+        const deletedBooking = await ServiceBooking.findOneAndDelete({
+          serviceBookingId,
+          status: "pending"
+        });
 
+        if (!deletedBooking) {
+          throw new Error("Booking not found or not in pending state");
+        }
         return {
           success: true,
           message: "Service booking deleted",
-          deletedId: id
+          deletedId: serviceBookingId
         };
       } catch (err) {
         return {

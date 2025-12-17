@@ -77,6 +77,6 @@ extend type Query {
   extend type Mutation {
     submitJobApplication(input: JobApplicationInput!): JobApplicationResponse!
     updateApplicationStatus(input: UpdateApplicationStatusInput!): JobApplicationResponse!
-    deleteApplication(id: ID!): JobApplicationResponse!
+    deleteJobApplication(jobId: String!): JobApplicationResponse!
   }
 `;
