@@ -1,2 +1,8 @@
-# admin-backend/config/firebase-service-account.json
-
+admin-backend/config/firebase-service-account.json
+admin-frontend/config/firebase-service-account.json
+admin-backend/middleware/firebaseAuth.js
+admin-backend/node_modules
+admin-frontend/node_modules
+admin-frontend/.env
+admin-backend/.env
+admin-backend.zip
