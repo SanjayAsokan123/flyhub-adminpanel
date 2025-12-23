@@ -1,15 +1,16 @@
 import mongoose from "mongoose";
+import { type } from "os";
 
 const rentalSchema = new mongoose.Schema(
   {
     rentalId: { type: String, unique: true },
-    name: { type: String, required: true },
-    brand: String,
-    location: String,
-    pricePerHour: Number,
-    pricePerDay: Number,
-    description: String,
-    image: String,
+    name: { type: String, required: true, index: true },
+    brand: { type: String, required: true, index: true },
+    location: { type: String, required: true, index: true },
+    pricePerHour: { type: Number, required: true, index: true },
+    pricePerDay: { type: Number, required: true, index: true },
+    description: { type: String, required: true },
+    image: { type: String },
     quantity: { type: Number, default: 1 },
     insurance: { type: Boolean, default: false },
     with_pilot: { type: Boolean, default: false },
@@ -66,5 +67,7 @@ rentalSchema.pre("save", async function (next) {
   }
 });
 
+rentalSchema.index({ name: 1, location: 1, pricePerHour: 1, pricePerDay: 1 });
+rentalSchema.index({ name: "text", brand: "text", location: "text" });
 export const Rental =
   mongoose.models.Rental || mongoose.model("Rental", rentalSchema);

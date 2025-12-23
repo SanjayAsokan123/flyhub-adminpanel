@@ -4,8 +4,8 @@ import { Seller } from "./Seller.model.js";
 const accessorySchema = new mongoose.Schema(
   {
     accessoryId: { type: String, unique: true },
-    name: { type: String, required: true },
-    brand: { type: String, required: true },
+    name: { type: String, required: true , index:true },
+    brand: { type: String, required: true , index:true},
     category: { type: String },
     price: { type: Number, required: true },
     description: { type: String, required: true },
@@ -35,6 +35,7 @@ accessorySchema.pre("save", async function (next) {
     next(err);
   }
 });
-
+accessorySchema.index({ name: 1, brand: 1 }); 
+accessorySchema.index({ name: "text", brand: "text" });
 export const Accessory =
   mongoose.models.Accessory || mongoose.model("Accessory", accessorySchema);

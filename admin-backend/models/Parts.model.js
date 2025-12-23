@@ -4,8 +4,8 @@ import { Seller } from "./Seller.model.js";
 const partSchema = new mongoose.Schema(
   {
     partId: { type: String, unique: true },
-    name: { type: String, required: true },
-    brand: { type: String, required: true },
+    name: { type: String, required: true, index: true },
+    brand: { type: String, required: true, index: true },
     price: { type: Number, required: true },
     description: { type: String, required: true },
     image: { type: String },
@@ -27,4 +27,6 @@ partSchema.pre("save", async function (next) {
   next();
 });
 
+partSchema.index({ name: 1, brand: 1 });
+partSchema.index({ name: "text", brand: "text" });
 export const Part = mongoose.models.Part || mongoose.model("Part", partSchema);

@@ -25,6 +25,8 @@ import { wishlistTypeDefs } from "../Wishlist.schema.js";
 import { productTypeDef } from "../Product.schema.js";
 import { addressTypeDefs } from "../BuyerAddress.schema.js";
 import { discountTypeDefs } from "../DiscountSet.schema.js";
+import { SellerViewTypeDefs } from "../SellerView.schema.js";
+import {globalSearchTypeDef} from "../GlobalSearch.schema.js";
 
 export const typeDefs = [
   baseTypeDefs,
@@ -52,4 +54,6 @@ export const typeDefs = [
   productTypeDef,
   addressTypeDefs,
   discountTypeDefs,
+  SellerViewTypeDefs,
+  globalSearchTypeDef
 ];

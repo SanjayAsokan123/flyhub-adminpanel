@@ -5,7 +5,17 @@ export const rentalTypeDefs = gql`
     email: String
     phoneNumber: String
   }
-
+input UpdateRentalInput {
+  name: String
+  brand: String
+  location: String
+  pricePerHour: Float
+  pricePerDay: Float
+  description: String
+  image: String
+  quantity: Int
+}
+ 
   type Rental {
     rentalId: ID!
     name: String!
@@ -69,7 +79,7 @@ export const rentalTypeDefs = gql`
   type Mutation {
     createRental(input: RentalInput!): Rental
     updateRentalStatus(rentalId: ID!, status: String!): Rental
-    updateRental(rentalId: ID!, input: RentalInput!): Rental
+    updateRental(rentalId: ID!, input: UpdateRentalInput!): Rental
     deleteRental(rentalId: ID!): Rental
   }
 `;

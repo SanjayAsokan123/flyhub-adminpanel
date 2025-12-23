@@ -5,6 +5,16 @@ export const serviceTypeDefs = gql`
     email: String
     phoneNumber: String
   }
+input UpdateServiceInput {
+  name: String
+  specificDrone: String
+  experience: Int
+  location: String
+  description: String
+  price: Float
+  image: String
+  status: String
+}
 
   type Service {
     serviceId: String
@@ -30,7 +40,7 @@ export const serviceTypeDefs = gql`
     description: String
     price: Float!
     image:String
-    sellerId: String! # must be Seller.customId
+    sellerId: String! 
   }
 
   type Query {
@@ -43,7 +53,7 @@ export const serviceTypeDefs = gql`
 
   type Mutation {
     createService(input: ServiceInput!): Service
-    updateService(serviceId: String!, input: ServiceInput!): Service
+    updateService(serviceId: String!, input: UpdateServiceInput!): Service
     updateServiceStatus(serviceId: String!, status: String!): Service
     deleteService(serviceId: String!): Service
   }

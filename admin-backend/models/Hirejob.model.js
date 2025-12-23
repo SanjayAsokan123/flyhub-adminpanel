@@ -6,10 +6,10 @@ const hireJobSchema = new mongoose.Schema(
     jobId: { type: String },
     jobName: { type: String, required: true },
     companyName: { type: String, required: true },
-    jobType: String,
+    jobType: { type: String, required: true },
     experience: String,
-    location: String,
-    salary: String,
+    location: { type: String, required: true },
+    salary: { type: String, required: true },
     description: String,
     requirement: String,
     email: String,
@@ -39,6 +39,21 @@ hireJobSchema.pre("save", async function (next) {
     next(err);
   }
 });
+
+// create text index for global search
+hireJobSchema.index({
+  jobName: "text",
+  companyName: "text",
+  description: "text",
+  requirement: "text"
+});
+// create indexes for filtering and sorting
+hireJobSchema.index({ location: 1, jobType: 1 });
+hireJobSchema.index({ salary: 1 });
+hireJobSchema.index({ sellerId: 1 });
+hireJobSchema.index({ status: 1 });
+hireJobSchema.index({ createdAt: -1 });
+
 
 export const HireJob =
   mongoose.models.HireJob || mongoose.model("HireJob", hireJobSchema);

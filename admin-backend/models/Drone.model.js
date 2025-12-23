@@ -3,9 +3,9 @@ import { Seller } from "./Seller.model.js";
 
 const droneSchema = new mongoose.Schema(
   {
-    droneId: { type: String, unique: true },
-    name: { type: String, required: true },
-    brand: { type: String, required: true },
+    droneId: { type: String, unique: true , index: true},
+    name: { type: String, required: true, index: true },
+    brand: { type: String, required: true, index: true },
     uin: { type: String, required: true, unique: true },
     price: { type: Number, required: true },
     description: { type: String, required: true },
@@ -31,5 +31,8 @@ droneSchema.pre("save", async function (next) {
     next(err);
   }
 });
+
+droneSchema.index({ name: 1, brand: 1 , uin: 1});
+droneSchema.index({ name:"text" , brand:"text", uin:"text"});
 
 export const Drone = mongoose.models.Drone || mongoose.model("Drone", droneSchema);

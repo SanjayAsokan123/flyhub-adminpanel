@@ -20,17 +20,19 @@ const jobApplicationSchema = new mongoose.Schema({
   jobTitle: {
     type: String,
     required: true,
+    index: true
   },
 
   companyName: {
     type: String,
     default: "",
+    index: true
   },
 
   name: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
   },
 
   email: {

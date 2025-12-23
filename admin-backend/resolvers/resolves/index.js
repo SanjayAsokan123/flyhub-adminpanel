@@ -23,6 +23,9 @@ import { wishlistResolvers } from "../Wishlist.resolver.js";
 import { productResolvers } from "../Product.resolver.js";
 import { addressResolvers } from "../BuyerAddress.resolver.js";
 import { discountResolvers } from "../DiscountSet.resolver.js";
+import { getSellerViewResolver } from "../../resolvers/SellerView.resolver.js";
+import { globalSearchResolver } from "../GlobalSearch.resolver.js";
+
 
 export const resolves = [
   droneResolvers,
@@ -50,4 +53,6 @@ export const resolves = [
   productResolvers,
   addressResolvers,
   discountResolvers,
+  getSellerViewResolver,
+  globalSearchResolver
 ];

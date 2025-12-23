@@ -5,6 +5,15 @@ export const partTypeDefs = gql`
     email: String
     phoneNumber: String
   }
+input UpdatePartInput {
+  name: String
+  brand: String
+  price: Float
+  description: String
+  image: String
+  quantity: Int
+  status: String
+}
 
   type Part {
     partId: String
@@ -48,7 +57,7 @@ input PartInput {
 
   type Mutation {
     createPart(input: PartInput!): Part
-    updatePart(partId: String!, input: PartInput!): Part
+    updatePart(partId: String!, input: UpdatePartInput!): Part
     updatePartStatus(partId: String!, status: String!): Part
     deletePart(partId: String!): Part
   }

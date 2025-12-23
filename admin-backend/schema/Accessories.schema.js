@@ -5,6 +5,16 @@ export const accessoryTypeDefs = gql`
     email: String
     phoneNumber: String
   }
+input UpdateAccessoryInput {
+  name: String
+  brand: String
+  category: String
+  price: Float
+  description: String
+  image: String
+  quantity: Int
+  status: String
+}
 
   type Accessory {
     accessoryId: String
@@ -56,7 +66,7 @@ export const accessoryTypeDefs = gql`
   extend type Mutation {
     createAccessory(input: AccessoryInput!): Accessory
 
-    updateAccessory(accessoryId: String!, input: AccessoryInput!): Accessory
+    updateAccessory(accessoryId: String!, input: UpdateAccessoryInput!): Accessory
 
     updateAccessoryStatus(accessoryId: String!, status: String!): Accessory
 

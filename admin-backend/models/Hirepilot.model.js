@@ -11,9 +11,9 @@ const fileSchema = new mongoose.Schema({
 const hirePilotSchema = new mongoose.Schema(
   {
     pilotId: { type: String, unique: true },
-    pilotName: { type: String, required: true },
+    pilotName: { type: String, required: true   },
     pilotCompany: { type: String },
-    location: { type: String },
+    location: { type: String  , required: true  },
     availability: { type: Boolean, default: true },
     specification: { type: String },
     price: {
@@ -57,6 +57,25 @@ hirePilotSchema.pre("save", async function (next) {
   }
   next();
 });
+// TEXT SEARCH (search bar only)
+hirePilotSchema.index({
+  pilotName: "text",
+  pilotCompany: "text",
+  description: "text",
+  specification: "text"
+});
+
+// FILTER INDEXES
+hirePilotSchema.index({ location: 1 });
+hirePilotSchema.index({ availability: 1 });
+hirePilotSchema.index({ adminStatus: 1 });
+hirePilotSchema.index({ buyerStatus: 1 });
+hirePilotSchema.index({ sellerId: 1 });
+
+// PRICE FILTERS
+hirePilotSchema.index({ "price.perHour": 1 });
+hirePilotSchema.index({ "price.perDay": 1 });
+
 
 export const HirePilot =
   mongoose.models.HirePilot || mongoose.model("HirePilot", hirePilotSchema);

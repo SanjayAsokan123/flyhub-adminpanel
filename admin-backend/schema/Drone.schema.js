@@ -5,6 +5,16 @@ export const droneTypeDefs = gql`
     email: String
     phoneNumber: String
   }
+input UpdateDroneInput {
+  name: String
+  brand: String
+  uin: String
+  price: Float
+  description: String
+  image: String
+  quantity: Int
+  status: String
+}
 
   type Drone {
     droneId: String
@@ -53,7 +63,7 @@ export const droneTypeDefs = gql`
   type Mutation {
   saveSellerFcmToken(sellerId: String!, token: String!): Boolean
     createDrone(input: DroneInput!): Drone
-    updateDrone(uin: String!, input: DroneInput!): Drone
+    updateDrone(uin: String!, input: UpdateDroneInput!): Drone
     deleteDrone(uin: String!): Drone
     updateDroneStatus(uin: String!, status: String!): Drone
   }
