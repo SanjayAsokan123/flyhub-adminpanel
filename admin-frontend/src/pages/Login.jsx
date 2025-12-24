@@ -1,36 +1,53 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { useMutation, gql } from "@apollo/client";
+import { AuthContext } from "../context/AuthContext";
 import "../styles/Login.css";
 
+const LOGIN_MUTATION = gql`
+  mutation AdminLogin($email: String!, $password: String!) {
+    adminLogin(email: $email, password: $password) {
+      success
+      message
+      token
+      refreshToken
+      user {
+        name
+        role
+        assignedPage
+      }
+    }
+  }
+`;
+
 function Login() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
 
-  const handleLogin = (e) => {
+  const [adminLogin, { loading }] = useMutation(LOGIN_MUTATION);
+
+  const handleLogin = async (e) => {
     e.preventDefault();
+    try {
+      const { data } = await adminLogin({ variables: { email, password } });
+      if (data.adminLogin.success) {
+        login(data.adminLogin.token, data.adminLogin.refreshToken, data.adminLogin.user);
 
-    // default superadmin credentials
-    if (username === "admin" && password === "1234") {
-      const user = { username, role: "superadmin" };
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("currentUser", JSON.stringify(user));
-      navigate("/");
-      return;
-    }
-
-    // check sub-admins from localStorage
-    const subAdmins = JSON.parse(localStorage.getItem("admins")) || [];
-    const found = subAdmins.find(
-      (a) => a.username === username && a.password === password
-    );
-
-    if (found) {
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("currentUser", JSON.stringify(found));
-      navigate("/");
-    } else {
-      alert("Invalid credentials ⚠");
+        // Redirect logic based on assignedPage or default
+        const assignedPage = data.adminLogin.user?.assignedPage;
+        if (assignedPage && assignedPage !== "/") {
+          navigate(assignedPage);
+        } else {
+          navigate("/");
+        }
+      } else {
+        alert(data.adminLogin.message || "Login failed");
+      }
+    } catch (err) {
+      console.error("Login Error:", err);
+      alert("Login failed: " + err.message);
     }
   };
 
@@ -44,9 +61,9 @@ function Login() {
           <div className="input-group">
             <input
               type="text"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
@@ -61,8 +78,8 @@ function Login() {
             />
           </div>
 
-          <button type="submit" className="login-btn">
-            Log In
+          <button type="submit" className="login-btn" disabled={loading}>
+            {loading ? "Logging in..." : "Log In"}
           </button>
         </form>
 

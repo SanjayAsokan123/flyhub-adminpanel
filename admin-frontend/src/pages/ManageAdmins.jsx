@@ -1,203 +1,272 @@
 
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useContext } from "react";
+import { useQuery, useMutation, gql } from "@apollo/client";
+import { AuthContext } from "../context/AuthContext";
 import "../styles/ManageAdmins.css";
+import axios from "axios";
+
+// GraphQL Operations
+const GET_ADMINS = gql`
+  query GetAllAdmins {
+    getAllAdmins {
+      id
+      name
+      email
+      role
+      subRole
+      assignedPage
+      profileImage
+    }
+  }
+`;
+
+const CREATE_SUB_ADMIN = gql`
+  mutation CreateSubAdmin($name: String!, $email: String!, $password: String!, $role: String, $subRole: String, $assignedPage: String, $profileImage: String) {
+    createSubAdmin(name: $name, email: $email, password: $password, role: $role, subRole: $subRole, assignedPage: $assignedPage, profileImage: $profileImage) {
+      success
+      message
+    }
+  }
+`;
+
+const DELETE_ADMIN = gql`
+  mutation DeleteAdmin($id: ID!) {
+    deleteAdmin(id: $id) {
+      success
+      message
+    }
+  }
+`;
 
 export default function ManageAdmins() {
-  const [admins, setAdmins] = useState([]);
-  const [newAdmin, setNewAdmin] = useState({
-    username: "",
-    password: "",
-    access: [],
-  });
-  const [editingAdmin, setEditingAdmin] = useState(null);
+  const { user } = useContext(AuthContext);
+  const { data, loading, error, refetch } = useQuery(GET_ADMINS);
 
+  const [createSubAdmin] = useMutation(CREATE_SUB_ADMIN);
+  const [deleteAdmin] = useMutation(DELETE_ADMIN);
+
+  const [newAdmin, setNewAdmin] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "subadmin",
+    subRole: "viewer",
+    assignedPage: "/",
+    profileImage: "",
+  });
+
+  const [uploading, setUploading] = useState(false);
+
+  // Available Pages for assignment
   const allPages = [
-    "users",
-    "reports",
-    "parts",
-    "accessories",
-    "services",
-    "rentals",
-    "sold-product",
-    "regulatory",
-    "settings",
-    "pilot",
-    "job",
-    "seller",
-    "return-product",
-    "drone-rent",
+    { label: "Dashboard", value: "/" },
+    { label: "Users", value: "/users" },
+    { label: "Reports", value: "/reports" }, // Assuming reports route
+    { label: "Parts", value: "/parts" },
+    { label: "Accessories", value: "/accessories" },
+    { label: "Services", value: "/services" },
+    { label: "Rentals", value: "/rentals" },
+    { label: "Sold Products", value: "/sold-product" },
+    { label: "Regulatory", value: "/regulatory" },
+    { label: "Settings", value: "/settings" },
+    { label: "Hire Pilot", value: "/pilot" },
+    { label: "Hire Job", value: "/job" },
+    { label: "Seller Approval", value: "/seller" },
+    { label: "Returns", value: "/return-product" },
+    { label: "Manage Admins", value: "/manage-admins" },
   ];
 
-  // Load existing admins (or initialize)
-  useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("admins")) || [];
-    // always include superadmin
-    const superAdmin = {
-      username: "admin",
-      password: "1234",
-      role: "superadmin",
-      access: allPages,
-    };
-    const merged = [superAdmin, ...stored.filter(a => a.username !== "admin")];
-    setAdmins(merged);
-  }, []);
+  // File Upload Handler
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  // Save changes to localStorage
-  useEffect(() => {
-    const toStore = admins.filter(a => a.username !== "admin");
-    localStorage.setItem("admins", JSON.stringify(toStore));
-  }, [admins]);
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder", "admin-profiles");
 
-  // Add new subadmin
-  const handleAdd = (e) => {
-    e.preventDefault();
-    if (!newAdmin.username || !newAdmin.password) return alert("Fill all fields!");
-    if (admins.some(a => a.username === newAdmin.username))
-      return alert("Username already exists!");
+    try {
+      // Use existing backend REST endpoint
+      const res = await axios.post("http://127.0.0.1:5001/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
-    setAdmins([
-      ...admins,
-      {
-        username: newAdmin.username,
-        password: newAdmin.password,
-        role: "subadmin",
-        access: newAdmin.access,
-      },
-    ]);
-    setNewAdmin({ username: "", password: "", access: [] });
-  };
-
-  // Toggle access permission
-  const toggleAccess = (page) => {
-    setNewAdmin(prev => ({
-      ...prev,
-      access: prev.access.includes(page)
-        ? prev.access.filter(p => p !== page)
-        : [...prev.access, page],
-    }));
-  };
-
-  // Edit existing admin
-  const handleEdit = (admin) => setEditingAdmin({ ...admin });
-
-  // Save edited admin
-  const saveEdit = () => {
-    setAdmins(admins.map(a => a.username === editingAdmin.username ? editingAdmin : a));
-    setEditingAdmin(null);
-  };
-
-  // Delete subadmin
-  const deleteAdmin = (username) => {
-    if (username === "admin") return alert("Cannot delete superadmin!");
-    if (`window.confirm(Delete admin '${username}'?)`) {
-      setAdmins(admins.filter(a => a.username !== username));
+      if (res.data.success) {
+        setNewAdmin({ ...newAdmin, profileImage: res.data.url });
+        alert("File uploaded successfully! ✅");
+      } else {
+        alert("Upload failed.");
+      }
+    } catch (err) {
+      console.error("Upload error", err);
+      alert("Error uploading file.");
+    } finally {
+      setUploading(false);
     }
   };
 
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    if (!newAdmin.name || !newAdmin.email || !newAdmin.password) return alert("Fill all required fields!");
+
+    try {
+      const { data } = await createSubAdmin({ variables: { ...newAdmin } });
+      if (data.createSubAdmin.success) {
+        alert("User created successfully! 🎉");
+        setNewAdmin({
+          name: "",
+          email: "",
+          password: "",
+          role: "subadmin",
+          subRole: "viewer",
+          assignedPage: "/",
+          profileImage: "",
+        });
+        refetch();
+      } else {
+        alert("Error: " + data.createSubAdmin.message);
+      }
+    } catch (err) {
+      alert("Error creating user: " + err.message);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm("Are you sure you want to delete this user?")) {
+      try {
+        const { data } = await deleteAdmin({ variables: { id } });
+        if (data.deleteAdmin.success) {
+          refetch();
+        } else {
+          alert(data.deleteAdmin.message);
+        }
+      } catch (err) {
+        alert("Error deleting user: " + err.message);
+      }
+    }
+  };
+
+  if (loading) return <p className="loading-text">Loading Admins...</p>;
+  if (error) return <p className="error-text">Error loading admins: {error.message}</p>;
+
+  // Only allow Main Admin to see this page content ideally
+  if (user?.role !== "admin") {
+    return <div className="unauthorized">You are not authorized to view this page.</div>;
+  }
+
   return (
     <div className="manage-admins-container">
-      <h1>Manage Admins 👑</h1>
+      <h1>User Management (RBAC) 👑</h1>
 
       {/* === Add New Admin Form === */}
       <form className="add-admin-form" onSubmit={handleAdd}>
-        <input
-          type="text"
-          placeholder="Username"
-          value={newAdmin.username}
-          onChange={(e) => setNewAdmin({ ...newAdmin, username: e.target.value })}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={newAdmin.password}
-          onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
-        />
+        <h3>Create New User</h3>
+        <div className="form-grid">
+          <input
+            type="text"
+            placeholder="Name"
+            value={newAdmin.name}
+            onChange={(e) => setNewAdmin({ ...newAdmin, name: e.target.value })}
+            required
+          />
+          <input
+            type="email"
+            placeholder="Email"
+            value={newAdmin.email}
+            onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
+            required
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={newAdmin.password}
+            onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
+            required
+          />
 
-        <div className="access-box">
-          <p>Page Access:</p>
-          <div className="access-grid">
-            {allPages.map((page) => (
-              <label key={page}>
-                <input
-                  type="checkbox"
-                  checked={newAdmin.access.includes(page)}
-                  onChange={() => toggleAccess(page)}
-                />
-                {page}
-              </label>
-            ))}
+          <select
+            value={newAdmin.role}
+            onChange={(e) => setNewAdmin({ ...newAdmin, role: e.target.value })}
+          >
+            <option value="subadmin">Subadmin</option>
+            <option value="admin">Admin</option>
+          </select>
+
+          <select
+            value={newAdmin.subRole}
+            onChange={(e) => setNewAdmin({ ...newAdmin, subRole: e.target.value })}
+          >
+            <option value="viewer">Viewer</option>
+            <option value="editor">Editor</option>
+          </select>
+
+          <div className="file-input-group">
+            <label>Assigned Page:</label>
+            <select
+              value={newAdmin.assignedPage}
+              onChange={(e) => setNewAdmin({ ...newAdmin, assignedPage: e.target.value })}
+            >
+              {allPages.map(p => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="file-input-group">
+            <label>Profile/Doc Upload:</label>
+            <input type="file" onChange={handleFileChange} />
+            {uploading && <span>Uploading...</span>}
+            {newAdmin.profileImage && <span className="success-mark">✓</span>}
           </div>
         </div>
 
-        <button type="submit" className="add-btn">Add Subadmin</button>
+        <button type="submit" className="add-btn" disabled={uploading}>
+          {uploading ? "Wait..." : "Create User"}
+        </button>
       </form>
 
       {/* === Admin List === */}
       <table className="admin-table">
         <thead>
           <tr>
-            <th>Username</th>
-            <th>Password</th>
+            <th>Profile</th>
+            <th>Name</th>
+            <th>Email</th>
             <th>Role</th>
-            <th>Access Pages</th>
+            <th>Sub-Role</th>
+            <th>Assigned Page</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {admins.map((admin) => (
-            <tr key={admin.username}>
-              <td>{admin.username}</td>
-              <td>{admin.password}</td>
-              <td>{admin.role}</td>
-              <td>{admin.access.join(", ")}</td>
+          {data?.getAllAdmins?.map((admin) => (
+            <tr key={admin.id}>
               <td>
-                {admin.username !== "admin" && (
-                  <>
-                    <button onClick={() => handleEdit(admin)}>Edit</button>
-                    <button onClick={() => deleteAdmin(admin.username)}>Delete</button>
-                  </>
+                {admin.profileImage ? (
+                  <img src={admin.profileImage} alt="profile" className="table-avatar" />
+                ) : (
+                  <span className="no-img">No Img</span>
+                )}
+              </td>
+              <td>{admin.name}</td>
+              <td>{admin.email}</td>
+              <td>
+                <span className={`badge ${admin.role}`}>{admin.role}</span>
+              </td>
+              <td>{admin.subRole}</td>
+              <td>{admin.assignedPage}</td>
+              <td>
+                {admin.id !== user.id && (
+                  <button className="delete-btn" onClick={() => handleDelete(admin.id)}>
+                    Delete
+                  </button>
                 )}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-
-      {/* === Edit Modal === */}
-      {editingAdmin && (
-        <div className="edit-modal">
-          <div className="edit-box">
-            <h2>Edit Admin: {editingAdmin.username}</h2>
-            <input
-              type="password"
-              value={editingAdmin.password}
-              onChange={(e) => setEditingAdmin({ ...editingAdmin, password: e.target.value })}
-            />
-            <div className="access-grid">
-              {allPages.map((page) => (
-                <label key={page}>
-                  <input
-                    type="checkbox"
-                    checked={editingAdmin.access.includes(page)}
-                    onChange={() => {
-                      setEditingAdmin(prev => ({
-                        ...prev,
-                        access: prev.access.includes(page)
-                          ? prev.access.filter(p => p !== page)
-                          : [...prev.access, page],
-                      }));
-                    }}
-                  />
-                  {page}
-                </label>
-              ))}
-            </div>
-            <button onClick={saveEdit}>Save Changes</button>
-            <button onClick={() => setEditingAdmin(null)}>Cancel</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
