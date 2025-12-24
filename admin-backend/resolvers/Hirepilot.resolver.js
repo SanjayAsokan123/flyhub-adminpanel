@@ -77,76 +77,169 @@ export const hirePilotResolvers = {
     approvedHirePilotsByStatus: async () =>
       HirePilot.aggregate([{ $match: { adminStatus: /^approved$/i } }, ...baseLookup]),
 
-   approvedHirePilotsPaginated: async (_, { page, limit, search }) => {
-  const pageNumber = Math.max(page, 1);
-  const pageSize = Math.max(limit, 1);
-  const skip = (pageNumber - 1) * pageSize;
+    approvedHirePilotsPaginated: async (_, { page, limit, search = {}, query }) => {
+      const pageNumber = Math.max(page, 1);
+      const pageSize = Math.max(limit, 1);
+      const skip = (pageNumber - 1) * pageSize;
 
-  // Build dynamic search filters
-  const matchStage = {
-    $match: {
-      adminStatus: /^approved$/i,
-      ...(search?.pilotName
-        ? { pilotName: { $regex: search.pilotName, $options: "i" } }
-        : {}),
-      ...(search?.location
-        ? { location: { $regex: search.location, $options: "i" } }
-        : {}),
-      ...(search?.minPricePerHour || search?.maxPricePerHour
-        ? {
-            "price.perHour": {
-              ...(search.minPricePerHour
-                ? { $gte: search.minPricePerHour }
-                : {}),
-              ...(search.maxPricePerHour
-                ? { $lte: search.maxPricePerHour }
-                : {}),
-            },
-          }
-        : {}),
-      ...(search?.minPricePerDay || search?.maxPricePerDay
-        ? {
-            "price.perDay": {
-              ...(search.minPricePerDay
-                ? { $gte: search.minPricePerDay }
-                : {}),
-              ...(search.maxPricePerDay
-                ? { $lte: search.maxPricePerDay }
-                : {}),
-            },
-          }
-        : {}),
-    },
-  };
+      // 1. Parse Query String (if present)
+      let dynamicFilters = {};
+      let searchText = "";
 
-  const [result] = await HirePilot.aggregate([
-    matchStage,
-    {
-      $facet: {
-        items: [
-          ...baseLookup, // keep your existing lookups
-          { $skip: skip },
-          { $limit: pageSize },
-        ],
-        totalCount: [{ $count: "count" }],
-      },
-    },
-  ]);
+      if (query) {
+        // Extract Price
+        const listPrice = extractPriceAndClean(query);
+        const { min, max, cleanedText } = listPrice;
 
-  const totalCount =
-    result.totalCount && result.totalCount.length > 0
-      ? result.totalCount[0].count
-      : 0;
+        if (min !== null) {
+          dynamicFilters.minPrice = min;
+        }
+        if (max !== null) {
+          dynamicFilters.maxPrice = max;
+        }
 
-  const pageCount = Math.ceil(totalCount / pageSize);
+        // Remove Stopwords (near, in, etc.)
+        searchText = removeStopWords(cleanedText);
+      }
 
-  return {
-    items: result.items,
-    totalCount,
-    page: pageNumber,
-    limit: pageSize,
-    pageCount,
-  };
+      // 2. Merge with explicit Search Input
+      // Explicit 'search' object takes precedence if both are present, 
+      // or we can treat them as AND. Let's merge logically: use the stricter constraint.
+      // But for simplicity, we'll use OR logic for prices if both exist? 
+      // Actually usually user uses ONE method. Let's prioritize explicitly passed filters, 
+      // but fill in gaps with parsed query.
+
+      const finalMinPricePerHour = search?.minPricePerHour ?? dynamicFilters.minPrice;
+      const finalMaxPricePerHour = search?.maxPricePerHour ?? dynamicFilters.maxPrice;
+
+      const finalMinPricePerDay = search?.minPricePerDay ?? dynamicFilters.minPrice;
+      const finalMaxPricePerDay = search?.maxPricePerDay ?? dynamicFilters.maxPrice;
+
+      // Text Search: 
+      // Split by space and filter empty strings
+      // For each word, we want it to match AT LEAST ONE of the fields
+      const textSearchStage = [];
+      if (searchText) {
+        const words = searchText.split(/\s+/).filter(w => w.length > 0);
+
+        words.forEach(word => {
+          const regex = { $regex: word, $options: "i" };
+          textSearchStage.push({
+            $or: [
+              { pilotName: regex },
+              { pilotCompany: regex },
+              { location: regex },
+              { specification: regex },
+              { description: regex }
+            ]
+          });
+        });
+      }
+
+      // Build dynamic search filters
+      const matchStage = {
+        $match: {
+          adminStatus: /^approved$/i,
+
+          // Original Specific Filters
+          ...(search?.pilotName
+            ? { pilotName: { $regex: search.pilotName, $options: "i" } }
+            : {}),
+          ...(search?.location
+            ? { location: { $regex: search.location, $options: "i" } }
+            : {}),
+
+          // Price Filters (merged)
+          // We apply the price limit to EITHER perHour OR perDay if it came from generic "query",
+          // BUT if it came from specific 'search' fields we know which one.
+          // Complication: 'dynamicFilters.minPrice' applies to WHICH?
+          // Strategy: If 'query' was used ("under 500"), we usually mean "under 500 per hour" OR "under 500 per day".
+          // So we should construct an $or for price if it came from generic query.
+          // HOWEVER, to keep it simple and consistent with previous logic:
+          // If we have specific filters, use them.
+          // If we have generic price from query, apply to BOTH or EITHER?
+          // Let's go with: If generic price exists, we check if price.perHour fits OR price.perDay fits.
+
+          ...((dynamicFilters.minPrice || dynamicFilters.maxPrice) && !search?.minPricePerHour && !search?.minPricePerDay
+            ? {
+              $or: [
+                {
+                  "price.perHour": {
+                    ...(dynamicFilters.minPrice ? { $gte: dynamicFilters.minPrice } : {}),
+                    ...(dynamicFilters.maxPrice ? { $lte: dynamicFilters.maxPrice } : {})
+                  }
+                },
+                {
+                  "price.perDay": {
+                    ...(dynamicFilters.minPrice ? { $gte: dynamicFilters.minPrice } : {}),
+                    ...(dynamicFilters.maxPrice ? { $lte: dynamicFilters.maxPrice } : {})
+                  }
+                }
+              ]
+            }
+            : {} // If explicit search provided, handled below
+          ),
+
+          // Explicit Price Filters (preserve original logic if specific fields used)
+          // Note: The original logic below is fine for explicit inputs.
+          ...(search?.minPricePerHour || search?.maxPricePerHour
+            ? {
+              "price.perHour": {
+                ...(search.minPricePerHour
+                  ? { $gte: search.minPricePerHour }
+                  : {}),
+                ...(search.maxPricePerHour
+                  ? { $lte: search.maxPricePerHour }
+                  : {}),
+              },
+            }
+            : {}),
+          ...(search?.minPricePerDay || search?.maxPricePerDay
+            ? {
+              "price.perDay": {
+                ...(search.minPricePerDay
+                  ? { $gte: search.minPricePerDay }
+                  : {}),
+                ...(search.maxPricePerDay
+                  ? { $lte: search.maxPricePerDay }
+                  : {}),
+              },
+            }
+            : {}),
+
+          // Combine Text Search
+          ...(textSearchStage.length > 0 ? { $and: textSearchStage } : {})
+        },
+      };
+
+      const [result] = await HirePilot.aggregate([
+        matchStage,
+        {
+          $facet: {
+            items: [
+              ...baseLookup, // keep your existing lookups
+              { $skip: skip },
+              { $limit: pageSize },
+            ],
+            totalCount: [{ $count: "count" }],
+          },
+        },
+      ]);
+
+      const totalCount =
+        result.totalCount && result.totalCount.length > 0
+          ? result.totalCount[0].count
+          : 0;
+
+      const pageCount = Math.ceil(totalCount / pageSize);
+
+      return {
+        items: result.items,
+        totalCount,
+        page: pageNumber,
+        limit: pageSize,
+        pageCount,
+      };
     },
   },
 
@@ -320,3 +413,54 @@ export const hirePilotResolvers = {
     },
   },
 };
+
+// ==========================================
+// HELPERS
+// ==========================================
+
+function extractPriceAndClean(text) {
+  const ranges = { min: null, max: null };
+  if (!text) return { ...ranges, cleanedText: "" };
+
+  let cleaned = text;
+
+  // Patterns for MAX (under/below/less than)
+  const maxPatterns = [/under\s*(\d+)(k?)/i, /below\s*(\d+)(k?)/i, /less\s+than\s*(\d+)(k?)/i];
+  for (const regex of maxPatterns) {
+    const match = cleaned.match(regex);
+    if (match) {
+      cleaned = cleaned.replace(match[0], '');
+      ranges.max = parseInt(match[1]) * (match[2].toLowerCase() === 'k' ? 1000 : 1);
+      break;
+    }
+  }
+
+  // Patterns for MIN (over/above/more than)
+  const minPatterns = [/over\s*(\d+)(k?)/i, /above\s*(\d+)(k?)/i, /more\s+than\s*(\d+)(k?)/i];
+  for (const regex of minPatterns) {
+    const match = cleaned.match(regex);
+    if (match) {
+      cleaned = cleaned.replace(match[0], '');
+      ranges.min = parseInt(match[1]) * (match[2].toLowerCase() === 'k' ? 1000 : 1);
+      break;
+    }
+  }
+
+  // RANGE (500-1000)
+  const rangeMatch = cleaned.match(/(\d+)(k?)\s*-\s*(\d+)(k?)/i);
+  if (rangeMatch) {
+    cleaned = cleaned.replace(rangeMatch[0], '');
+    ranges.min = parseInt(rangeMatch[1]) * (rangeMatch[2].toLowerCase() === 'k' ? 1000 : 1);
+    ranges.max = parseInt(rangeMatch[3]) * (rangeMatch[4].toLowerCase() === 'k' ? 1000 : 1);
+  }
+
+  return { ...ranges, cleanedText: cleaned.replace(/\s+/g, ' ').trim() };
+}
+
+function removeStopWords(text) {
+  if (!text) return "";
+  const stopWords = ['near', 'in', 'at', 'from', 'around'];
+  const words = text.split(/\s+/);
+  // Filter out stop words
+  return words.filter(w => !stopWords.includes(w.toLowerCase())).join(' ');
+}

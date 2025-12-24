@@ -30,6 +30,25 @@ export const jobTypeDefs = gql`
     sellerId: String
   }
 
+  input JobSearchInput {
+    jobName: String
+    companyName: String
+    jobType: String
+    experience: String
+    location: String
+    salary: String
+    description: String
+    requirement: String
+  }
+
+  type PaginatedJobs {
+    items: [Job!]!
+    totalCount: Int!
+    page: Int!
+    limit: Int!
+    pageCount: Int!
+  }
+
   type Query {
     jobs: [Job!]!
     job(jobId: String!): Job
@@ -37,6 +56,12 @@ export const jobTypeDefs = gql`
     approvedJobs(sellerId: String): [Job!]!
     pendingJobs(sellerId: String!): [Job!]!
     getAllApprovedJobs: [Job!]!
+    approvedJobsPaginated(
+      page: Int!
+      limit: Int!
+      search: JobSearchInput
+      query: String
+    ): PaginatedJobs!
   }
 
   type Mutation {

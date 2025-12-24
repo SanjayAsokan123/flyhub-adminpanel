@@ -1,9 +1,6 @@
 import { Drone } from "../models/Drone.model.js";
 import { Part } from "../models/Parts.model.js";
 import { Accessory } from "../models/Accessories.model.js";
-import { HirePilot } from "../models/Hirepilot.model.js";
-import { HireJob } from "../models/Hirejob.model.js";
-import { Service } from "../models/Service.model.js";
 
 export const globalSearchResolver = {
   SearchResult: {
@@ -32,7 +29,11 @@ export const globalSearchResolver = {
 
       // Step B: Extract Types (Fuzzy) & Clean Type Keywords
       // e.g., "partrs for dji" -> types=['PART'], text="for dji"
-      const { text: cleanedText, detectedTypes } = extractTypesAndClean(textAfterPrice, types);
+      const { text: cleanedTextWithStopWords, detectedTypes } = extractTypesAndClean(textAfterPrice, types);
+
+      // Step C: Remove Spatial Stop Words
+      // e.g. "pilot near chennai" -> "pilot chennai"
+      const cleanedText = removeStopWords(cleanedTextWithStopWords);
 
       // If user manually filtered types, use those. Otherwise use detected types. 
       // If neither, search everything (empty list).
@@ -48,46 +49,21 @@ export const globalSearchResolver = {
       const buildCommonQuery = (baseQuery, typeName) => {
         // Price Filter
         if (finalMinPrice || finalMaxPrice) {
-          if (typeName === 'PILOT') {
-            // For pilots, check both perHour and perDay
-            const priceOr = [];
-            if (finalMinPrice) {
-              priceOr.push({ "price.perHour": { $gte: finalMinPrice } });
-              priceOr.push({ "price.perDay": { $gte: finalMinPrice } });
-            }
-            if (finalMaxPrice) {
-              priceOr.push({ "price.perHour": { $lte: finalMaxPrice } });
-              priceOr.push({ "price.perDay": { $lte: finalMaxPrice } });
-            }
-
-            // If we have price filters, we need to construct a valid query. 
-            // Simplified logic: matches if EITHER perHour OR perDay fits the range
-            // But actually, usually "under 100k" for a pilot might usually mean per day or per hour.
-            // Let's being permissive: if the price fits in EITHER field, show it.
-            const rangeQuery = {};
-            if (finalMinPrice) rangeQuery.$gte = finalMinPrice;
-            if (finalMaxPrice) rangeQuery.$lte = finalMaxPrice;
-
-            baseQuery.$or = [
-              { "price.perHour": rangeQuery },
-              { "price.perDay": rangeQuery }
-            ];
-
-          } else {
-            baseQuery.price = buildPriceFilter(finalMinPrice, finalMaxPrice);
-          }
+          // Pilot logic removed, standard price filter for products
+          baseQuery.price = buildPriceFilter(finalMinPrice, finalMaxPrice);
         }
 
-        // Brand/Category/Location Filters
+        // Brand/Category Filters
         if (brands.length && ['DRONE', 'PART', 'ACCESSORY'].includes(typeName)) {
-          baseQuery.brand = { $in: brands };
+          baseQuery.brand = { $in: brands }; // Case sensitivity might need $regex if brands are free-text
         }
         if (categories.length && ['DRONE', 'ACCESSORY'].includes(typeName)) {
           baseQuery.category = { $in: categories };
         }
-        if (locations.length && ['PILOT', 'JOB', 'SERVICE'].includes(typeName)) {
-          baseQuery.location = { $in: locations };
-        }
+
+        // Location filters removed for pure product search unless Products have location?
+        // Usually Products are shippable, but if they have seller location...
+        // Assuming current Product Schema doesn't heavily rely on location filter for Global Search.
 
         return baseQuery;
       };
@@ -135,45 +111,6 @@ export const globalSearchResolver = {
         );
       }
 
-      // --- PILOT ---
-      if (shouldSearch(typesToSearch, 'PILOT')) {
-        let q = { adminStatus: "approved", ...buildPilotTextSearch(cleanedText) };
-        q = buildCommonQuery(q, 'PILOT');
-
-        let findQ = HirePilot.find(q).limit(perModelLimit).lean();
-        if (sortBy !== "RELEVANCE") findQ = findQ.sort(buildSortOptions(sortBy, "price.perHour"));
-
-        searchPromises.push(
-          findQ.then(res => res.map(i => ({ ...i, _type: "PILOT", _typename: "HirePilotSearchResult" })))
-        );
-      }
-
-      // --- JOB ---
-      if (shouldSearch(typesToSearch, 'JOB')) {
-        let q = { status: "approved", ...buildJobTextSearch(cleanedText) };
-        q = buildCommonQuery(q, 'JOB');
-
-        let findQ = HireJob.find(q).limit(perModelLimit).lean();
-        if (sortBy !== "RELEVANCE") findQ = findQ.sort(buildSortOptions(sortBy, "postedDate"));
-
-        searchPromises.push(
-          findQ.then(res => res.map(i => ({ ...i, _type: "JOB", _typename: "HireJobSearchResult" })))
-        );
-      }
-
-      // --- SERVICE ---
-      if (shouldSearch(typesToSearch, 'SERVICE')) {
-        let q = { status: "approved", ...buildServiceTextSearch(cleanedText) };
-        q = buildCommonQuery(q, 'SERVICE');
-
-        let findQ = Service.find(q).limit(perModelLimit).lean();
-        if (sortBy !== "RELEVANCE") findQ = findQ.sort(buildSortOptions(sortBy, "rating"));
-
-        searchPromises.push(
-          findQ.then(res => res.map(i => ({ ...i, _type: "SERVICE", _typename: "ServiceSearchResult" })))
-        );
-      }
-
       // -------------------------
       // 3. RESULTS AGGREGATION
       // -------------------------
@@ -181,7 +118,7 @@ export const globalSearchResolver = {
       const aggregationResults = await Promise.allSettled(aggregationPromises);
 
       let allResults = [];
-      const typeCounts = { DRONE: 0, PART: 0, ACCESSORY: 0, PILOT: 0, JOB: 0, SERVICE: 0 };
+      const typeCounts = { DRONE: 0, PART: 0, ACCESSORY: 0 };
 
       searchResults.forEach(result => {
         if (result.status === "fulfilled" && result.value) {
@@ -238,38 +175,40 @@ function extractPriceAndClean(text) {
   let cleaned = text;
 
   // Patterns
-  // "under 100k", "under 500"
-  // "over 100k", "over 500"
-  // "500-1000", "50k-100k"
-  const patterns = [
-    { regex: /under\s*(\d+)(k?)/i, type: 'MAX' },
-    { regex: /over\s*(\d+)(k?)/i, type: 'MIN' },
-    { regex: /(\d+)(k?)\s*-\s*(\d+)(k?)/i, type: 'RANGE' }
-  ];
+  // MAX: "under 100k", "below 500", "less than 500", "under 500"
+  // MIN: "over 100k", "above 500", "more than 500"
+  // RANGE: "500-1000", "50k-100k"
 
-  // We loop but only match one pattern meaningfully usually. 
-  // Let's try to match them.
+  // We process specific patterns and remove them from text.
 
   // MAX
-  let match = cleaned.match(/under\s*(\d+)(k?)/i);
-  if (match) {
-    cleaned = cleaned.replace(match[0], '');
-    ranges.max = parseInt(match[1]) * (match[2].toLowerCase() === 'k' ? 1000 : 1);
+  const maxPatterns = [/under\s*(\d+)(k?)/i, /below\s*(\d+)(k?)/i, /less\s+than\s*(\d+)(k?)/i];
+  for (const regex of maxPatterns) {
+    const match = cleaned.match(regex);
+    if (match) {
+      cleaned = cleaned.replace(match[0], '');
+      ranges.max = parseInt(match[1]) * (match[2].toLowerCase() === 'k' ? 1000 : 1);
+      break; // Assume only one price constraint of this type
+    }
   }
 
   // MIN
-  match = cleaned.match(/over\s*(\d+)(k?)/i);
-  if (match) {
-    cleaned = cleaned.replace(match[0], '');
-    ranges.min = parseInt(match[1]) * (match[2].toLowerCase() === 'k' ? 1000 : 1);
+  const minPatterns = [/over\s*(\d+)(k?)/i, /above\s*(\d+)(k?)/i, /more\s+than\s*(\d+)(k?)/i];
+  for (const regex of minPatterns) {
+    const match = cleaned.match(regex);
+    if (match) {
+      cleaned = cleaned.replace(match[0], '');
+      ranges.min = parseInt(match[1]) * (match[2].toLowerCase() === 'k' ? 1000 : 1);
+      break;
+    }
   }
 
   // RANGE
-  match = cleaned.match(/(\d+)(k?)\s*-\s*(\d+)(k?)/i);
-  if (match) {
-    cleaned = cleaned.replace(match[0], '');
-    ranges.min = parseInt(match[1]) * (match[2].toLowerCase() === 'k' ? 1000 : 1);
-    ranges.max = parseInt(match[3]) * (match[4].toLowerCase() === 'k' ? 1000 : 1);
+  const rangeMatch = cleaned.match(/(\d+)(k?)\s*-\s*(\d+)(k?)/i);
+  if (rangeMatch) {
+    cleaned = cleaned.replace(rangeMatch[0], '');
+    ranges.min = parseInt(rangeMatch[1]) * (rangeMatch[2].toLowerCase() === 'k' ? 1000 : 1);
+    ranges.max = parseInt(rangeMatch[3]) * (rangeMatch[4].toLowerCase() === 'k' ? 1000 : 1);
   }
 
   return { ...ranges, cleanedText: cleaned.replace(/\s+/g, ' ').trim() };
@@ -282,10 +221,8 @@ function extractTypesAndClean(text, existingTypes) {
   const TYPE_KEYWORDS = {
     DRONE: ['drone', 'drones', 'uav', 'quadcopter'],
     PART: ['part', 'parts', 'spare', 'motor', 'propeller', 'battery'],
-    ACCESSORY: ['accessory', 'accessories', 'case', 'charger'],
-    PILOT: ['pilot', 'pilots', 'operator'],
-    JOB: ['job', 'jobs', 'hiring', 'career'],
-    SERVICE: ['service', 'services', 'repair']
+    ACCESSORY: ['accessory', 'accessories', 'case', 'charger']
+    // Pilot, Job, Service removed
   };
 
   const words = text.split(/\s+/);
@@ -379,9 +316,7 @@ function buildPriceFilter(min, max) {
 function buildDroneTextSearch(text) { return buildTextSearch(text, ['name', 'brand', 'model', 'description', 'category', 'uin']); }
 function buildPartTextSearch(text) { return buildTextSearch(text, ['name', 'brand', 'model', 'description', 'category']); }
 function buildAccessoryTextSearch(text) { return buildTextSearch(text, ['name', 'brand', 'category', 'description']); }
-function buildPilotTextSearch(text) { return buildTextSearch(text, ['pilotName', 'pilotCompany', 'specification', 'description', 'location']); } // removed certifications.url as it's not text searchable directly usually
-function buildJobTextSearch(text) { return buildTextSearch(text, ['jobName', 'companyName', 'description', 'requirement', 'location', 'jobType']); }
-function buildServiceTextSearch(text) { return buildTextSearch(text, ['serviceName', 'serviceType', 'description', 'location']); }
+// Removed Pilot, Job, Service text search builders
 
 function buildTextSearch(text, fields) {
   if (!text) return {};
@@ -410,7 +345,7 @@ function calculateRelevanceScore(item, searchText) {
   if (!searchText) return { total: 0, textMatch: 0, popularity: 0, recency: 0 };
 
   const searchWords = searchText.split(' ');
-  const fields = ['name', 'brand', 'model', 'description', 'category', 'pilotName', 'pilotCompany', 'specification', 'jobName', 'companyName', 'serviceName', 'serviceType'];
+  const fields = ['name', 'brand', 'model', 'description', 'category', 'specification'];
   fields.forEach(f => {
     if (item[f]) searchWords.forEach(w => { if (item[f] && item[f].toLowerCase().includes(w)) textMatch += 10; });
   });
@@ -458,9 +393,13 @@ function mapResultToType(item, type) {
     case 'DRONE': return { ...base, name: item.name, brand: item.brand, model: item.model, price: item.price, image: item.image, quantity: item.quantity, category: item.category, createdAt: item.createdAt };
     case 'PART': return { ...base, name: item.name, brand: item.brand, model: item.model, price: item.price, image: item.image, quantity: item.quantity, compatibleDrones: item.compatibleDrones || [], createdAt: item.createdAt };
     case 'ACCESSORY': return { ...base, name: item.name, brand: item.brand, category: item.category, price: item.price, image: item.image, quantity: item.quantity, description: item.description, createdAt: item.createdAt };
-    case 'PILOT': return { ...base, pilotName: item.pilotName, pilotCompany: item.pilotCompany, location: item.location, specification: item.specification, price: item.price, certifications: item.certifications?.map(c => c?.url || c) || [], resume: item.resume?.url || null, description: item.description, experienceYears: item.experienceYears, createdAt: item.createdAt };
-    case 'JOB': return { ...base, jobName: item.jobName, companyName: item.companyName, jobType: item.jobType, experience: item.experience, location: item.location, salary: item.salary, description: item.description, requirement: item.requirement, postedDate: item.createdAt };
-    case 'SERVICE': return { ...base, serviceName: item.serviceName, serviceType: item.serviceType, location: item.location, price: item.price, description: item.description, createdAt: item.createdAt };
     default: return base;
   }
+}
+
+function removeStopWords(text) {
+  if (!text) return "";
+  const stopWords = ['near', 'in', 'at', 'from', 'around'];
+  const words = text.split(/\s+/);
+  return words.filter(w => !stopWords.includes(w.toLowerCase())).join(' ');
 }

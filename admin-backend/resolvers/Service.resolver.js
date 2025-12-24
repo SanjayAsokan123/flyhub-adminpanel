@@ -30,7 +30,6 @@ export const serviceResolvers = {
         throw new Error("Failed to fetch services: " + error.message);
       }
     },
-
     service: async (_, { serviceId }) => {
       try {
         const s = await Service.findOne({ serviceId });
@@ -48,13 +47,117 @@ export const serviceResolvers = {
         throw new Error("Failed to fetch service: " + error.message);
       }
     },
-
     approvedServices: async (_, { sellerId }) =>
       Service.find({ sellerId, status: "approved" }),
     pendingServices: async (_, { sellerId }) =>
       Service.find({ sellerId, status: "pending" }),
     rejectedServices: async (_, { sellerId }) =>
       Service.find({ sellerId, status: "rejected" }),
+
+    approvedServicesPaginated: async (_, { page, limit, search = {}, query }) => {
+      const pageNumber = Math.max(page, 1);
+      const pageSize = Math.max(limit, 1);
+      const skip = (pageNumber - 1) * pageSize;
+
+      // 1. Parse Query String (if present)
+      let dynamicFilters = {};
+      let searchText = "";
+
+      if (query) {
+        // Extract Price
+        const listPrice = extractPriceAndClean(query);
+        const { min, max, cleanedText } = listPrice;
+
+        if (min !== null) dynamicFilters.minPrice = min;
+        if (max !== null) dynamicFilters.maxPrice = max;
+
+        // Remove Stopwords
+        searchText = removeStopWords(cleanedText);
+      }
+
+      // Text Search Stage
+      const textSearchStage = [];
+      if (searchText) {
+        const words = searchText.split(/\s+/).filter(w => w.length > 0);
+        words.forEach(word => {
+          const regex = { $regex: word, $options: "i" };
+          textSearchStage.push({
+            $or: [
+              { name: regex },
+              { specificDrone: regex },
+              { location: regex },
+              { description: regex },
+              // experience is Int, cannot use regex directly unless converted. 
+              // Usually users search "5 years experience". 
+              // We can try to match exact number if word is number?
+              // For now let's stick to text fields.
+            ]
+          });
+        });
+      }
+
+      // Build Match Stage
+      const matchStage = {
+        $match: {
+          status: { $regex: /^approved$/i },
+
+          // Explicit Search Filters
+          ...(search?.name ? { name: { $regex: search.name, $options: "i" } } : {}),
+          ...(search?.location ? { location: { $regex: search.location, $options: "i" } } : {}),
+          ...(search?.specificDrone ? { specificDrone: { $regex: search.specificDrone, $options: "i" } } : {}),
+
+          // Price Filters (Merged)
+          ...((dynamicFilters.minPrice || dynamicFilters.maxPrice) && !search?.minPrice && !search?.maxPrice
+            ? {
+              price: {
+                ...(dynamicFilters.minPrice ? { $gte: dynamicFilters.minPrice } : {}),
+                ...(dynamicFilters.maxPrice ? { $lte: dynamicFilters.maxPrice } : {})
+              }
+            }
+            : {}
+          ),
+
+          // Explicit Price
+          ...(search?.minPrice || search?.maxPrice
+            ? {
+              price: {
+                ...(search.minPrice ? { $gte: search.minPrice } : {}),
+                ...(search.maxPrice ? { $lte: search.maxPrice } : {})
+              }
+            }
+            : {}
+          ),
+
+          // Combine Text Search
+          ...(textSearchStage.length > 0 ? { $and: textSearchStage } : {})
+        }
+      };
+
+      const [result] = await Service.aggregate([
+        matchStage,
+        {
+          $facet: {
+            items: [
+              ...baseLookup, // We need to define baseLookup for Service if not exists, or reuse logic
+              { $skip: skip },
+              { $limit: pageSize },
+            ],
+            totalCount: [{ $count: "count" }],
+          },
+        },
+      ]);
+
+      const totalCount = result.totalCount?.[0]?.count || 0;
+      const pageCount = Math.ceil(totalCount / pageSize);
+
+      return {
+        items: result.items,
+        totalCount,
+        page: pageNumber,
+        limit: pageSize,
+        pageCount,
+      };
+    },
   },
 
   Mutation: {
@@ -200,22 +303,20 @@ export const serviceResolvers = {
           });
         }
 
-        if(status==="approved")
-             {
-             await sendPushNotification(
-             seller.fcmTokens,
-             "Seller approved",
-             "Explore your profile page and Thank you"
-             );
-             }
-             else if(status==="approved")
-                  {
-                  await sendPushNotification(
-                  seller.fcmTokens,
-                  "Seller rejected",
-                  "Please contact admin for more info"
-                  );
-                  }
+        if (status === "approved") {
+          await sendPushNotification(
+            seller.fcmTokens,
+            "Seller approved",
+            "Explore your profile page and Thank you"
+          );
+        }
+        else if (status === "approved") {
+          await sendPushNotification(
+            seller.fcmTokens,
+            "Seller rejected",
+            "Please contact admin for more info"
+          );
+        }
 
         return {
           ...updated.toObject(),
@@ -263,3 +364,65 @@ export const serviceResolvers = {
     },
   },
 };
+
+// ==========================================
+// HELPERS
+// ==========================================
+
+const baseLookup = [
+  {
+    $lookup: {
+      from: "sellers",
+      localField: "sellerId",
+      foreignField: "customId",
+      as: "sellerInfo"
+    }
+  },
+  { $unwind: { path: "$sellerInfo", preserveNullAndEmptyArrays: true } }
+];
+
+function extractPriceAndClean(text) {
+  const ranges = { min: null, max: null };
+  if (!text) return { ...ranges, cleanedText: "" };
+
+  let cleaned = text;
+
+  // Patterns for MAX (under/below/less than)
+  const maxPatterns = [/under\s*(\d+)(k?)/i, /below\s*(\d+)(k?)/i, /less\s+than\s*(\d+)(k?)/i];
+  for (const regex of maxPatterns) {
+    const match = cleaned.match(regex);
+    if (match) {
+      cleaned = cleaned.replace(match[0], '');
+      ranges.max = parseInt(match[1]) * (match[2].toLowerCase() === 'k' ? 1000 : 1);
+      break;
+    }
+  }
+
+  // Patterns for MIN (over/above/more than)
+  const minPatterns = [/over\s*(\d+)(k?)/i, /above\s*(\d+)(k?)/i, /more\s+than\s*(\d+)(k?)/i];
+  for (const regex of minPatterns) {
+    const match = cleaned.match(regex);
+    if (match) {
+      cleaned = cleaned.replace(match[0], '');
+      ranges.min = parseInt(match[1]) * (match[2].toLowerCase() === 'k' ? 1000 : 1);
+      break;
+    }
+  }
+
+  // RANGE (500-1000)
+  const rangeMatch = cleaned.match(/(\d+)(k?)\s*-\s*(\d+)(k?)/i);
+  if (rangeMatch) {
+    cleaned = cleaned.replace(rangeMatch[0], '');
+    ranges.min = parseInt(rangeMatch[1]) * (rangeMatch[2].toLowerCase() === 'k' ? 1000 : 1);
+    ranges.max = parseInt(rangeMatch[3]) * (rangeMatch[4].toLowerCase() === 'k' ? 1000 : 1);
+  }
+
+  return { ...ranges, cleanedText: cleaned.replace(/\s+/g, ' ').trim() };
+}
+
+function removeStopWords(text) {
+  if (!text) return "";
+  const stopWords = ['near', 'in', 'at', 'from', 'around'];
+  const words = text.split(/\s+/);
+  return words.filter(w => !stopWords.includes(w.toLowerCase())).join(' ');
+}

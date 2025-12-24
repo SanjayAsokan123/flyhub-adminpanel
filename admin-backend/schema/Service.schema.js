@@ -43,12 +43,34 @@ input UpdateServiceInput {
     sellerId: String! 
   }
 
+  input ServiceSearchInput {
+    name: String
+    specificDrone: String
+    location: String
+    minPrice: Float
+    maxPrice: Float
+  }
+
+  type PaginatedServices {
+    items: [Service!]!
+    totalCount: Int!
+    page: Int!
+    limit: Int!
+    pageCount: Int!
+  }
+
   type Query {
     services: [Service!]!
     service(serviceId: String!): Service
     approvedServices(sellerId: String!): [Service!]
     pendingServices(sellerId: String!): [Service!]
     rejectedServices(sellerId: String!): [Service!]
+    approvedServicesPaginated(
+      page: Int!
+      limit: Int!
+      search: ServiceSearchInput
+      query: String
+    ): PaginatedServices!
   }
 
   type Mutation {

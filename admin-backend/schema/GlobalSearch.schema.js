@@ -59,9 +59,6 @@ enum SearchableType {
   DRONE
   PART
   ACCESSORY
-  PILOT
-  JOB
-  SERVICE
 }
 
 enum SortOption {
@@ -117,9 +114,6 @@ union SearchResult =
     DroneSearchResult
   | PartSearchResult
   | AccessorySearchResult
-  | HirePilotSearchResult
-  | HireJobSearchResult
-  | ServiceSearchResult
 
 # =========================
 # DRONE
@@ -173,67 +167,6 @@ type AccessorySearchResult implements Searchable {
   price: Float
   image: String
   quantity: Int
-}
-
-# =========================
-# HIRE PILOT
-# =========================
-type PilotPrice {
-  perHour: Float
-  perDay: Float
-}
-type File {
-  url: String!
-}
-
-type HirePilotSearchResult implements Searchable {
-  id: ID!
-  type: String!
-  score: Float!
-  relevance: RelevanceScore!
-  pilotName: String
-  pilotCompany: String
-  location: String
-  availability: Boolean
-  specification: String
-  PilotPrice: PilotPrice
-  certifications: [File]
-  resume: File
-  description: String
-}
-
-# =========================
-# HIRE JOB
-# =========================
-type HireJobSearchResult implements Searchable {
-  id: ID!
-  type: String!
-  score: Float!
-  relevance: RelevanceScore!
-  jobName: String
-  companyName: String
-  jobType: String
-  experience: String
-  location: String
-  salary: Float
-  description: String
-  requirement: String
-}
-
-# =========================
-# SERVICE
-# =========================
-type ServiceSearchResult implements Searchable {
-  id: ID!
-  type: String!
-  score: Float!
-  relevance: RelevanceScore!
-  serviceName: String
-  serviceType: String
-  location: String
-  price: Float
-  availability: Boolean
-  description: String
 }
 
 `;

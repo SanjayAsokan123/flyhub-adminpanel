@@ -120,7 +120,7 @@ export const hirePilotTypeDefs = gql`
     hirePilotsBySeller(sellerId: String!): [HirePilot]
     hirePilotsByStatus(adminStatus: String!): [HirePilot]
     approvedHirePilotsByStatus: [HirePilot]
-    approvedHirePilotsPaginated(page: Int!, limit: Int! , search: HirePilotSearchInput): HirePilotPage!
+    approvedHirePilotsPaginated(page: Int!, limit: Int!, search: HirePilotSearchInput, query: String): HirePilotPage!
   }
 
   extend type Mutation {

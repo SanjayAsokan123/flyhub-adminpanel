@@ -73,6 +73,7 @@ input UpdateRentalInput {
       page: Int!
       limit: Int!
       search: RentalSearchInput
+      query: String
     ): PaginatedRentals!
   }
 
