@@ -20,6 +20,23 @@ export const globalSearchResolver = {
 
       const { types = [], minPrice, maxPrice, brands = [], categories = [], locations = [] } = filters;
 
+      // OPTIMIZATION 1: Early return if query is empty and no critical filters are active
+      if (!originalQuery && !minPrice && !maxPrice && brands.length === 0 && categories.length === 0) {
+        return {
+          results: [],
+          total: 0,
+          page,
+          totalPages: 0,
+          hasNextPage: false,
+          aggregations: {
+            types: [],
+            brands: [],
+            categories: [],
+            priceRange: { min: 0, max: 0 }
+          }
+        };
+      }
+
       // Step A: Extract Price Ranges & Clean Price Terms
       // e.g., "drone under 100k" -> price conditions, removes "under 100k"
       const { min: parsedMin, max: parsedMax, cleanedText: textAfterPrice } = extractPriceAndClean(originalQuery);
@@ -73,7 +90,7 @@ export const globalSearchResolver = {
         let q = { status: "approved", ...buildDroneTextSearch(cleanedText) };
         q = buildCommonQuery(q, 'DRONE');
 
-        let findQ = Drone.find(q).limit(perModelLimit).lean();
+        let findQ = Drone.find(q).select('name brand model uin price image quantity category createdAt').limit(perModelLimit).lean();
         if (sortBy !== "RELEVANCE") findQ = findQ.sort(buildSortOptions(sortBy, "price"));
 
         searchPromises.push(
@@ -90,7 +107,7 @@ export const globalSearchResolver = {
         let q = { status: "approved", ...buildPartTextSearch(cleanedText) };
         q = buildCommonQuery(q, 'PART');
 
-        let findQ = Part.find(q).limit(perModelLimit).lean();
+        let findQ = Part.find(q).select('name brand model description price image quantity compatibleDrones createdAt').limit(perModelLimit).lean();
         if (sortBy !== "RELEVANCE") findQ = findQ.sort(buildSortOptions(sortBy, "price"));
 
         searchPromises.push(
@@ -103,7 +120,7 @@ export const globalSearchResolver = {
         let q = { status: "approved", ...buildAccessoryTextSearch(cleanedText) };
         q = buildCommonQuery(q, 'ACCESSORY');
 
-        let findQ = Accessory.find(q).limit(perModelLimit).lean();
+        let findQ = Accessory.find(q).select('name brand category description price image quantity createdAt').limit(perModelLimit).lean();
         if (sortBy !== "RELEVANCE") findQ = findQ.sort(buildSortOptions(sortBy, "price"));
 
         searchPromises.push(

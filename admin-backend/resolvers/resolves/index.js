@@ -25,6 +25,7 @@ import { addressResolvers } from "../BuyerAddress.resolver.js";
 import { discountResolvers } from "../DiscountSet.resolver.js";
 import { getSellerViewResolver } from "../../resolvers/SellerView.resolver.js";
 import { globalSearchResolver } from "../GlobalSearch.resolver.js";
+import { adminResolvers } from "../Admin.resolver.js";
 
 
 export const resolves = [
@@ -54,5 +55,6 @@ export const resolves = [
   addressResolvers,
   discountResolvers,
   getSellerViewResolver,
-  globalSearchResolver
+  globalSearchResolver,
+  adminResolvers
 ];

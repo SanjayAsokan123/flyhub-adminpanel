@@ -5,6 +5,10 @@ export const adminTypeDefs = gql`
     id: ID!
     name: String!
     email: String!
+    role: String
+    subRole: String
+    assignedPage: String
+    profileImage: String
     token: String
   }
 
@@ -13,20 +17,33 @@ export const adminTypeDefs = gql`
     message: String!
     token: String
     refreshToken: String
+    user: Admin
   }
 
   type AdminInfo {
     id: ID
     email: String
     name: String
+    role: String
   }
 
   type Query {
     testAdminToken: AdminInfo
+    getAllAdmins: [Admin]
   }
 
   type Mutation {
     adminRegister(name: String!, email: String!, password: String!): AuthResponse!
+    createSubAdmin(
+      name: String!
+      email: String!
+      password: String!
+      role: String
+      subRole: String
+      assignedPage: String
+      profileImage: String
+    ): AuthResponse!
+    deleteAdmin(id: ID!): AuthResponse!
     adminLogin(email: String!, password: String!): AuthResponse!
     refreshAdminToken(refreshToken: String!): AuthResponse!
   }

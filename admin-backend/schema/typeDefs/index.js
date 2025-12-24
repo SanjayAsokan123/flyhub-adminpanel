@@ -5,7 +5,7 @@ import { droneTypeDefs } from "../Drone.schema.js";
 import { partTypeDefs } from "../Parts.schema.js";
 import { accessoryTypeDefs } from "../Accessories.schema.js";
 import { rentalTypeDefs } from "../Rental.schema.js";
-import { rentalBookingTypeDefs }  from "../Buyer_Booking_Pilot_Rental.schema.js";
+import { rentalBookingTypeDefs } from "../Buyer_Booking_Pilot_Rental.schema.js";
 import { dronerentalBookingTypeDefs } from "../Buyer_Booking_Drone_Rental.schema.js";
 import { jobApplicationTypeDefs } from "../JobBooking.schema.js";
 import { hirePilotTypeDefs } from "../Hirepilot.schema.js";
@@ -26,7 +26,8 @@ import { productTypeDef } from "../Product.schema.js";
 import { addressTypeDefs } from "../BuyerAddress.schema.js";
 import { discountTypeDefs } from "../DiscountSet.schema.js";
 import { SellerViewTypeDefs } from "../SellerView.schema.js";
-import {globalSearchTypeDef} from "../GlobalSearch.schema.js";
+import { globalSearchTypeDef } from "../GlobalSearch.schema.js";
+import { adminTypeDefs } from "../Admin.schema.js";
 
 export const typeDefs = [
   baseTypeDefs,
@@ -55,5 +56,6 @@ export const typeDefs = [
   addressTypeDefs,
   discountTypeDefs,
   SellerViewTypeDefs,
-  globalSearchTypeDef
+  globalSearchTypeDef,
+  adminTypeDefs
 ];
