@@ -1,0 +1,146 @@
+/* ----------------------------- */
+/*        Layout Structure       */
+/* ----------------------------- */
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  font-family: "Poppins", sans-serif;
+}
+
+/* ----------------------------- */
+/*          Sidebar Style        */
+/* ----------------------------- */
+
+.sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, #1b1f3b 0%, #101225 100%);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease-in-out;
+  z-index: 1000;
+}
+
+.sidebar-header {
+  font-size: 1.3rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 20px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  letter-spacing: 0.5px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Navigation */
+.sidebar-nav {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sidebar-nav li {
+  margin: 4px 0;
+}
+
+.sidebar-nav a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  color: #d1d1e0;
+  text-decoration: none;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  border-left: 3px solid transparent;
+}
+
+.sidebar-nav a:hover,
+.sidebar-nav a.active {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-left: 3px solid #6366f1;
+}
+
+/* Icons */
+.sidebar-nav svg {
+  font-size: 1rem;
+  color: #a5b4fc;
+  transition: color 0.3s ease;
+}
+
+.sidebar-nav a:hover svg {
+  color: #fff;
+}
+
+/* ----------------------------- */
+/*         Main Content          */
+/* ----------------------------- */
+
+.content {
+  flex: 1;
+  margin-left: 260px;
+  background: #1b1f3b;
+  padding: 40px;
+  overflow-y: auto;
+  transition: margin-left 0.3s ease-in-out;
+}
+
+.content h1 {
+  color: #1b1f3b;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+/* ----------------------------- */
+/*          Scrollbar            */
+/* ----------------------------- */
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+/* ----------------------------- */
+/*        Responsive View        */
+/* ----------------------------- */
+
+@media (max-width: 992px) {
+  .sidebar {
+    width: 220px;
+  }
+
+  .content {
+    margin-left: 220px;
+    padding: 25px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: -260px;
+  }
+
+  .sidebar.active {
+    left: 0;
+  }
+
+  .content {
+    margin-left: 0;
+    padding: 20px;
+  }
+}

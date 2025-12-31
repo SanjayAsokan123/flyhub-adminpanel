@@ -1,0 +1,400 @@
+import React, { useEffect, useState } from "react";
+import "../styles/Parts.css";
+const GRAPHQL_URL = "https://flyhub-webadmin-4.onrender.com/graphql";
+
+function Parts() {
+  const [parts, setParts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [updatingStatus, setUpdatingStatus] = useState({ id: null, status: null });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
+
+  // Fetch ALL PARTS (with sellerInfo)
+  const fetchParts = async () => {
+    setLoading(true);
+    setError(null);
+
+    const query = `
+      query {
+        parts {
+          partId
+          name
+          brand
+          price
+          description
+          image
+          quantity
+          status
+          sellerId
+          sellerInfo {
+            email
+            phoneNumber
+          }
+        }
+      }
+    `;
+
+    try {
+      const res = await fetch(GRAPHQL_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+
+      if (!res.ok) throw new Error("HTTP error! " + res.status);
+
+      const result = await res.json();
+
+      if (result.errors) {
+        setError(result.errors[0].message);
+        setParts([]);
+      } else {
+        setParts(result.data.parts || []);
+      }
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update part status
+  const updatePartStatus = async (partId, newStatus) => {
+    setUpdatingStatus({ id: partId, status: newStatus });
+
+    const formattedPartId = String(partId);
+    const formattedStatus = newStatus.toLowerCase();
+
+    const mutation = `
+      mutation UpdatePartStatus($partId: String!, $status: String!) {
+        updatePartStatus(partId: $partId, status: $status) {
+          partId
+          status
+        }
+      }
+    `;
+
+    try {
+      const res = await fetch(GRAPHQL_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: mutation,
+          variables: {
+            partId: formattedPartId,
+            status: formattedStatus
+          }
+        }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("HTTP Error:", res.status, errorText);
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
+
+      const result = await res.json();
+
+      if (result.errors) {
+        console.error("GraphQL Errors:", result.errors);
+        setError(result.errors[0].message);
+      } else {
+        // Update local state to reflect the change
+        setParts(prevParts =>
+          prevParts.map(part =>
+            part.partId === partId
+              ? { ...part, status: formattedStatus }
+              : part
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Update Error:", err);
+      setError(err.message);
+    }
+
+    setUpdatingStatus({ id: null, status: null });
+  };
+
+  // Delete part - PERMANENT deletion
+  const deletePart = async (partId) => {
+    if (!window.confirm("Are you sure you want to permanently delete this part?")) {
+      return;
+    }
+
+    setUpdatingStatus({ id: partId, status: "deleting" });
+
+    const mutation = `
+      mutation DeletePart($partId: String!) {
+        deletePart(partId: $partId) {
+          partId
+          name
+        }
+      }
+    `;
+
+    try {
+      const res = await fetch(GRAPHQL_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: mutation,
+          variables: { partId: String(partId) }
+        }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
+
+      const result = await res.json();
+      console.log("Delete result:", result);
+
+      if (result.errors) {
+        console.error("GraphQL Errors:", result.errors);
+        setError(result.errors[0].message);
+        alert("Failed to delete: " + result.errors[0].message);
+      } else {
+        // Remove from local state
+        setParts(prevParts =>
+          prevParts.filter(part => part.partId !== partId)
+        );
+        alert("Part permanently deleted!");
+      }
+    } catch (err) {
+      console.error("Delete Error:", err);
+      setError(err.message);
+      alert("Failed to delete part: " + err.message);
+    }
+
+    setUpdatingStatus({ id: null, status: null });
+  };
+
+  useEffect(() => {
+    fetchParts();
+  }, []);
+
+  // Sort parts
+  const sortedParts = [...parts].sort((a, b) => {
+    if (sortBy === "newest") {
+      // For newest: assuming items at end of array are newer
+      return 1;
+    } else if (sortBy === "oldest") {
+      // For oldest: assuming items at beginning of array are older
+      return -1;
+    } else if (sortBy === "price-high") {
+      return (b.price || 0) - (a.price || 0);
+    } else if (sortBy === "price-low") {
+      return (a.price || 0) - (b.price || 0);
+    } else if (sortBy === "name-asc") {
+      return (a.name || "").localeCompare(b.name || "");
+    } else if (sortBy === "name-desc") {
+      return (b.name || "").localeCompare(a.name || "");
+    }
+    return 0;
+  });
+
+  // Filter parts based on selected status and search term
+  const filteredParts = sortedParts.filter(part => {
+    const matchesStatus = selectedStatus === "all" ||
+                         part.status.toLowerCase() === selectedStatus;
+
+    const matchesSearch = searchTerm === "" ||
+                         part.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         part.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         part.description.toLowerCase().includes(searchTerm.toLowerCase());
+
+    return matchesStatus && matchesSearch;
+  });
+
+  const statusColor = (status) => {
+    switch (status) {
+      case "approved":
+        return "status-approved";
+      case "pending":
+        return "status-pending";
+      case "rejected":
+        return "status-rejected";
+      default:
+        return "";
+    }
+  };
+
+  const isUpdating = (partId, status) => {
+    return updatingStatus.id === partId && updatingStatus.status === status;
+  };
+
+  if (loading) return <div className="loading">Loading parts…</div>;
+  if (error) return <div className="error">❌ {error}</div>;
+
+  return (
+    <div className="parts-container">
+      <h2 className="parts-title">🚀 Parts Dashboard</h2>
+
+      {/* Search Bar */}
+      <div className="search-container">
+        <input
+          type="text"
+          placeholder="Search parts by name, brand, or description..."
+          className="search-input"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <button className="search-button" onClick={() => {}}>
+          🔍
+        </button>
+      </div>
+
+      {/* Controls Row */}
+      <div className="controls-row">
+        {/* Status Filter Tabs */}
+        <div className="status-tabs">
+          {["all", "approved", "pending", "rejected"].map((status) => (
+            <button
+              key={status}
+              data-status={status}
+              className={`status-tab ${selectedStatus === status ? "active" : ""}`}
+              onClick={() => setSelectedStatus(status)}
+            >
+              {status === "all" && "📋 All Parts"}
+              {status === "approved" && "✅ Approved"}
+              {status === "pending" && "⏳ Pending"}
+              {status === "rejected" && "❌ Rejected"}
+            </button>
+          ))}
+        </div>
+
+        {/* Sort Dropdown */}
+        <div className="sort-dropdown">
+          <select 
+            value={sortBy} 
+            onChange={(e) => setSortBy(e.target.value)}
+            className="sort-select"
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="price-high">Price: High to Low</option>
+            <option value="price-low">Price: Low to High</option>
+            <option value="name-asc">Name: A-Z</option>
+            <option value="name-desc">Name: Z-A</option>
+          </select>
+        </div>
+      </div>
+
+      {filteredParts.length === 0 ? (
+        <p className="no-data">
+          {selectedStatus === "all" && searchTerm === ""
+            ? "No parts found."
+            : searchTerm !== ""
+            ? `No parts matching "${searchTerm}" found.`
+            : `No ${selectedStatus} parts found.`}
+        </p>
+      ) : (
+        <div className="parts-grid">
+          {filteredParts.map((part) => (
+            <div key={part.partId} className="part-card">
+              {/* Delete Button - TOP LEFT CORNER */}
+              <button
+                className="delete-btn"
+                onClick={() => deletePart(part.partId)}
+                disabled={isUpdating(part.partId, "deleting")}
+                title="Delete Part Permanently"
+              >
+                {isUpdating(part.partId, "deleting") ? "..." : "🗑"}
+              </button>
+
+              <span className={`status-badge ${statusColor(part.status)}`}>
+                {part.status.toUpperCase()}
+              </span>
+
+              <img
+                src={part.image}
+                alt={part.name}
+                className="part-img"
+              />
+
+              <h3>{part.name}</h3>
+              <p className="brand">Brand: {part.brand}</p>
+              <p className="price">₹ {part.price}</p>
+              <p className="desc">{part.description}</p>
+              <p><strong>Quantity:</strong> {part.quantity}</p>
+
+              <div className="status-actions">
+                {part.status === "approved" && (
+                  <>
+                    <button
+                      className="status-btn reject"
+                      onClick={() => updatePartStatus(part.partId, "rejected")}
+                      disabled={isUpdating(part.partId, "rejected")}
+                    >
+                      {isUpdating(part.partId, "rejected") ? "Updating..." : "Reject"}
+                    </button>
+                    <button
+                      className="status-btn pending"
+                      onClick={() => updatePartStatus(part.partId, "pending")}
+                      disabled={isUpdating(part.partId, "pending")}
+                    >
+                      {isUpdating(part.partId, "pending") ? "Updating..." : "Move to Pending"}
+                    </button>
+                  </>
+                )}
+
+                {part.status === "pending" && (
+                  <>
+                    <button
+                      className="status-btn approve"
+                      onClick={() => updatePartStatus(part.partId, "approved")}
+                      disabled={isUpdating(part.partId, "approved")}
+                    >
+                      {isUpdating(part.partId, "approved") ? "Updating..." : "Approve"}
+                    </button>
+                    <button
+                      className="status-btn reject"
+                      onClick={() => updatePartStatus(part.partId, "rejected")}
+                      disabled={isUpdating(part.partId, "rejected")}
+                    >
+                      {isUpdating(part.partId, "rejected") ? "Updating..." : "Reject"}
+                    </button>
+                  </>
+                )}
+
+                {part.status === "rejected" && (
+                  <>
+                    <button
+                      className="status-btn pending"
+                      onClick={() => updatePartStatus(part.partId, "pending")}
+                      disabled={isUpdating(part.partId, "pending")}
+                    >
+                      {isUpdating(part.partId, "pending") ? "Updating..." : "Move to Pending"}
+                    </button>
+                    <button
+                      className="status-btn approve"
+                      onClick={() => updatePartStatus(part.partId, "approved")}
+                      disabled={isUpdating(part.partId, "approved")}
+                    >
+                      {isUpdating(part.partId, "approved") ? "Updating..." : "Approve"}
+                    </button>
+                  </>
+                )}
+              </div>
+
+              <div className="seller-box">
+                <p><strong>Seller ID:</strong> {part.sellerId}</p>
+                <p><strong>Email:</strong> {part.sellerInfo?.email}</p>
+                <p><strong>Phone:</strong> {part.sellerInfo?.phoneNumber}</p>
+              </div>
+
+              <p className="part-id">Part ID: {part.partId}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default Parts;

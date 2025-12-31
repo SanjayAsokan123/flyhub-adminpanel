@@ -1,0 +1,263 @@
+/* 🌐 GLOBAL STYLES */
+.regulatory-page {
+  max-width: 1100px;
+  margin: 15px auto;
+  padding: 15px;
+  background: linear-gradient(135deg, #f8fbff, #eef3ff);
+  border-radius: 10px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+  font-family: "Poppins", sans-serif;
+}
+
+/* 📜 Title */
+.regulatory-page h2 {
+  text-align: center;
+  color: #1a1a1a;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 15px;
+  position: relative;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.regulatory-page h2::after {
+  content: "";
+  display: block;
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(90deg, #007bff, #00c6ff);
+  border-radius: 2px;
+  margin: 5px auto 0;
+}
+
+/* 📝 FORM STYLING */
+.regulatory-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 15px;
+  border-radius: 10px;
+  border: 1px solid rgba(230, 235, 245, 0.8);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 3px;
+  letter-spacing: 0.2px;
+  font-size: 0.9rem;
+}
+
+.form-group input,
+.form-group textarea {
+  border: 1px solid #cfd6e1;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: none;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 3px rgba(0, 123, 255, 0.3);
+}
+
+/* 🚀 SUBMIT BUTTON */
+.submit-btn {
+  background: linear-gradient(90deg, #007bff, #00c6ff);
+  color: #fff;
+  font-weight: 600;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  align-self: center;
+  letter-spacing: 0.2px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0, 123, 255, 0.25);
+  font-size: 0.9rem;
+}
+
+.submit-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 123, 255, 0.35);
+}
+
+/* 📂 SUBMISSIONS GRID - FIXED 3 COLUMN LAYOUT */
+.submissions-list {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* Fixed 3 columns */
+  gap: 12px; /* Reduced gap between cards */
+}
+
+/* 🪄 SUBMISSION CARD */
+.submission-card {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(220, 230, 245, 0.6);
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.submission-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* 🖼 IMAGE */
+.submission-card img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+/* 🧾 CARD CONTENT */
+.submission-card h3 {
+  font-size: 1rem;
+  color: #111;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.submission-date {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: #007bff;
+  background: #e8f1ff;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.submission-card p {
+  font-size: 0.85rem;
+  color: #444;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+/* 🎛 ACTION BUTTONS */
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+/* ✏ EDIT BUTTON */
+.edit-btn {
+  flex: 1;
+  background: linear-gradient(90deg, #ffc107, #ffb300);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 0;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(255, 193, 7, 0.3);
+  font-size: 0.85rem;
+}
+
+.edit-btn:hover {
+  transform: scale(1.02);
+  box-shadow: 0 3px 6px rgba(255, 193, 7, 0.4);
+}
+
+/* 🗑 DELETE BUTTON */
+.delete-btn {
+  flex: 1;
+  background: linear-gradient(90deg, #ff4d4d, #dc3545);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 0;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+  font-size: 0.85rem;
+}
+
+.delete-btn:hover {
+  transform: scale(1.02);
+  background: linear-gradient(90deg, #e63946, #c82333);
+  box-shadow: 0 3px 6px rgba(220, 53, 69, 0.4);
+}
+
+/* ⚠ ERROR & LOADING */
+.error-text {
+  color: #d9534f;
+  font-weight: 600;
+  text-align: center;
+  background: #ffe6e6;
+  padding: 6px;
+  border-radius: 4px;
+  margin: 10px auto;
+  font-size: 0.85rem;
+}
+
+.loading {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #007bff;
+  font-weight: 500;
+}
+
+/* 📱 RESPONSIVE */
+@media (max-width: 768px) {
+  .regulatory-page {
+    padding: 10px;
+    margin: 10px auto;
+  }
+
+  .regulatory-form {
+    padding: 10px;
+  }
+
+  .submission-card {
+    padding: 10px;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .edit-btn,
+  .delete-btn {
+    width: 100%;
+  }
+
+  /* Adjust grid for mobile */
+  .submissions-list {
+    grid-template-columns: 1fr; /* Single column on mobile */
+    gap: 10px;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Adjust grid for tablets */
+  .submissions-list {
+    grid-template-columns: repeat(2, 1fr); /* 2 columns on tablets */
+    gap: 15px;
+  }
+}
