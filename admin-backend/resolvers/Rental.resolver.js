@@ -235,7 +235,7 @@ approvedRentalsPaginated: async (_, { page, limit, search = {}, query }) => {
     /* 🔔 DB NOTIFICATION */
     await createSellerNotification({
       sellerId,
-      title: "🚁 New Rental Submitted",
+      title: "New Rental Submitted",
       message: `Your rental listing "${name}" has been submitted for admin approval.`,
       type: "rental_submission",
       data: { rentalId: saved.rentalId },
@@ -247,7 +247,7 @@ approvedRentalsPaginated: async (_, { page, limit, search = {}, query }) => {
     if (seller?.fcmTokens?.length) {
       await sendSellerPush(
         seller.fcmTokens,
-        "🚁 Rental Submitted",
+        "Rental Submitted",
         `Your rental "${name}" is pending admin approval.`,
         {
           rentalId: saved.rentalId,

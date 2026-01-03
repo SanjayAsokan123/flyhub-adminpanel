@@ -33,6 +33,7 @@ import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import "./App.css";
 import TrainingPage from "./pages/Training";
+import BuyerPilot from "./pages/BuyerPilot";
 
 export default function App() {
   return (
@@ -73,6 +74,7 @@ export default function App() {
                    <Route path="/training-page" element={<TrainingPage />} />
                   <Route path="/buyer-address" element={<BuyersAddress />} />
                   <Route path="/buyer-cart" element={<BuyerCart />} />
+                  <Route path="/buyer-pilot" element={<BuyerPilot />} />
                    <Route path="/drone-rental-form" element={<DroneRentalForm />} />
                   <Route path="/return-product" element={<ReturnProductsForm />} />
                   <Route path="/tax" element={<TaxSettingsForm />} />

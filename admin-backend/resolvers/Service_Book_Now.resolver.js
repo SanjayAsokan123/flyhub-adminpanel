@@ -106,9 +106,10 @@ export const ServiceBookingResolvers = {
       try {
 
         const bookings = await ServiceBooking.find({
-          status: "approved",
-          buyerId
+          buyerId,
+          status: { $in: ["approved", "completed"] }
         }).lean();
+
 
         if (!bookings.length) return [];
 
@@ -270,7 +271,7 @@ export const ServiceBookingResolvers = {
         if (seller?.fcmTokens?.length > 0) {
           await sendSellerPush(
             seller.fcmTokens,
-            "New Service Booking 🔔",
+            "New Service Booking",
             `New booking request for ${service?.serviceName}`,
             {
               serviceBookingId: saved.serviceBookingId,
@@ -286,7 +287,7 @@ export const ServiceBookingResolvers = {
         if (buyer?.fcmTokens?.length > 0) {
           await sendBuyerPush(
             buyer.fcmTokens,
-            "Service Booking Submitted ⏳",
+            "Service Booking Submitted",
             `Your booking for ${service?.serviceName} is pending approval.`,
             {
               serviceBookingId: saved.serviceBookingId,
@@ -359,7 +360,7 @@ export const ServiceBookingResolvers = {
           if (status === "pending") {
             await sendBuyerPush(
               buyer.fcmTokens,
-              "Service Booking Under Review ⏳",
+              "Service Booking Under Review",
               `Your booking for ${service?.serviceName} is under review.`,
               {
                 serviceBookingId,

@@ -184,7 +184,7 @@ export const droneResolvers = {
         if (seller.fcmTokens?.length) {
           await sendSellerPush(
             seller.fcmTokens,
-            "🛩️ Drone Submitted",
+            "Drone Submitted",
             `Your drone "${input.name}" has been submitted for admin review.`,
             {
               uin: input.uin,

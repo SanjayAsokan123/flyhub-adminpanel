@@ -36,9 +36,10 @@ export const droneRentalBookingResolvers = {
     getConfirmedDroneRentalsByBuyer: async (_, { buyerId }) =>
       DroneRental.find({
         buyerId,
-        status: "confirmed",
+        status: { $in: ["confirmed", "completed"] },
         buyerDeleted: false,
-      }),
+      }).sort({ createdAt: -1 }),
+
 
     getPendingDroneRentalsByBuyer: async (_, { buyerId }) =>
       DroneRental.find({
@@ -145,7 +146,7 @@ export const droneRentalBookingResolvers = {
         if (seller?.fcmTokens?.length > 0) {
           await sendSellerPush(
             seller.fcmTokens,
-            "New Drone Rental Request 🚁",
+            "New Drone Rental Request",
             `New rental request from ${name}`,
             {
               bookingId: newBooking.drone_rental_id,
@@ -153,12 +154,12 @@ export const droneRentalBookingResolvers = {
             }
           );
         }
-    
+
         // 🔔 Buyer Notification
         if (buyer?.fcmTokens?.length > 0) {
           await sendBuyerPush(
             buyer.fcmTokens,
-            "Rental Request Submitted ⏳",
+            "Rental Request Submitted",
             `Your rental request (${newBooking.drone_rental_id}) is pending approval.`,
             {
               bookingId: newBooking.drone_rental_id,

@@ -79,24 +79,24 @@ export const hirePilotResolvers = {
       HirePilot.aggregate([{ $match: { adminStatus: /^approved$/i } }, ...baseLookup]),
 
     hirePilotsApproved: async (_, { sellerId }) =>
-  HirePilot.aggregate([
-    { $match: { adminStatus: /^approved$/i, sellerId } },
-    ...baseLookup
-  ]),
+      HirePilot.aggregate([
+        { $match: { adminStatus: /^approved$/i, sellerId } },
+        ...baseLookup
+      ]),
 
-hirePilotsPending: async (_, { sellerId }) =>
-  HirePilot.aggregate([
-    { $match: { adminStatus: /^pending$/i, sellerId } },
-    ...baseLookup
-  ]),
+    hirePilotsPending: async (_, { sellerId }) =>
+      HirePilot.aggregate([
+        { $match: { adminStatus: /^pending$/i, sellerId } },
+        ...baseLookup
+      ]),
 
-hirePilotsRejected: async (_, { sellerId }) =>
-  HirePilot.aggregate([
-    { $match: { adminStatus: /^rejected$/i, sellerId } },
-    ...baseLookup
-  ]),
+    hirePilotsRejected: async (_, { sellerId }) =>
+      HirePilot.aggregate([
+        { $match: { adminStatus: /^rejected$/i, sellerId } },
+        ...baseLookup
+      ]),
 
-  approvedHirePilotsPaginated: async (_, { page, limit, search = {}, query }) => {
+    approvedHirePilotsPaginated: async (_, { page, limit, search = {}, query }) => {
       const pageNumber = Math.max(page, 1);
       const pageSize = Math.max(limit, 1);
       const skip = (pageNumber - 1) * pageSize;
@@ -230,266 +230,266 @@ hirePilotsRejected: async (_, { sellerId }) =>
   Mutation: {
 
     addHirePilot: async (_, { input }, { pubsub }) => {
-  try {
-    const seller = await Seller.findOne({ customId: input.sellerId });
-    if (!seller) throw new Error("Seller not found");
+      try {
+        const seller = await Seller.findOne({ customId: input.sellerId });
+        if (!seller) throw new Error("Seller not found");
 
-    if (!input.pilotId || input.pilotId.trim() === "") {
-      throw new Error("pilotId is required");
-    }
-
-    const existingPilot = await HirePilot.findOne({ pilotId: input.pilotId });
-    if (existingPilot) {
-      throw new Error(
-        `Pilot ID already exists: ${input.pilotId}. Please regenerate a new ID.`
-      );
-    }
-
-    const newPilot = new HirePilot({
-      ...input,
-      adminStatus: "pending",
-      buyerStatus: "pending",
-    });
-
-    await newPilot.save();
-
-    /* ================= SELLER DB NOTIFICATION ================= */
-
-    await createSellerNotification({
-      sellerId: input.sellerId,
-      title: "🧑‍✈ New Pilot Submitted",
-      message: `Your pilot "${input.pilotName}" has been submitted and is pending approval.`,
-      type: "hire_pilot_listing",
-      data: { pilotId: newPilot.pilotId, status: "pending" },
-      url: `/seller/pilots/${newPilot.pilotId}`,
-      pubsub,
-    });
-
-    /* ================= SELLER PUSH ================= */
-
-    if (seller.fcmTokens?.length) {
-      await sendSellerPush(
-        seller.fcmTokens,
-        "🧑‍✈ Pilot Submitted",
-        `Your pilot "${input.pilotName}" has been submitted for approval.`,
-        {
-          pilotId: newPilot.pilotId,
-          status: "pending",
-          type: "hire_pilot_submitted",
+        if (!input.pilotId || input.pilotId.trim() === "") {
+          throw new Error("pilotId is required");
         }
-      );
-    }
 
-    /* ================= RETURN POPULATED RESULT ================= */
+        const existingPilot = await HirePilot.findOne({ pilotId: input.pilotId });
+        if (existingPilot) {
+          throw new Error(
+            `Pilot ID already exists: ${input.pilotId}. Please regenerate a new ID.`
+          );
+        }
 
-    const result = await HirePilot.aggregate([
-      { $match: { _id: newPilot._id } },
-      ...baseLookup,
-    ]);
+        const newPilot = new HirePilot({
+          ...input,
+          adminStatus: "pending",
+          buyerStatus: "pending",
+        });
 
-    return result[0];
-  } catch (err) {
-    console.error("❌ Error adding hire pilot:", err);
-    throw new Error("Failed to add hire pilot: " + err.message);
-  }
-},
+        await newPilot.save();
 
+        /* ================= SELLER DB NOTIFICATION ================= */
 
-deleteHirePilot: async (_, { pilotId }, { pubsub }) => {
-  try {
-    const deleted = await HirePilot.findOneAndDelete({ pilotId });
-    if (!deleted) throw new Error("Pilot not found");
+        await createSellerNotification({
+          sellerId: input.sellerId,
+          title: "New Pilot Submitted",
+          message: `Your pilot "${input.pilotName}" has been submitted and is pending approval.`,
+          type: "hire_pilot_listing",
+          data: { pilotId: newPilot.pilotId, status: "pending" },
+          url: `/seller/pilots/${newPilot.pilotId}`,
+          pubsub,
+        });
 
-    /* ================= DELETE FILES ================= */
+        /* ================= SELLER PUSH ================= */
 
-    if (deleted.certifications?.length) {
-      for (const cert of deleted.certifications) {
-        if (cert.url) await deleteFirebaseFile(cert.url);
+        if (seller.fcmTokens?.length) {
+          await sendSellerPush(
+            seller.fcmTokens,
+            "Pilot Submitted",
+            `Your pilot "${input.pilotName}" has been submitted for approval.`,
+            {
+              pilotId: newPilot.pilotId,
+              status: "pending",
+              type: "hire_pilot_submitted",
+            }
+          );
+        }
+
+        /* ================= RETURN POPULATED RESULT ================= */
+
+        const result = await HirePilot.aggregate([
+          { $match: { _id: newPilot._id } },
+          ...baseLookup,
+        ]);
+
+        return result[0];
+      } catch (err) {
+        console.error("❌ Error adding hire pilot:", err);
+        throw new Error("Failed to add hire pilot: " + err.message);
       }
-    }
+    },
 
-    if (deleted.resume?.url) {
-      await deleteFirebaseFile(deleted.resume.url);
-    }
 
-    const seller = await Seller.findOne({ customId: deleted.sellerId });
+    deleteHirePilot: async (_, { pilotId }, { pubsub }) => {
+      try {
+        const deleted = await HirePilot.findOneAndDelete({ pilotId });
+        if (!deleted) throw new Error("Pilot not found");
 
-    /* ================= SELLER DB NOTIFICATION ================= */
+        /* ================= DELETE FILES ================= */
 
-    await createSellerNotification({
-      sellerId: deleted.sellerId,
-      title: "🗑 Pilot Listing Deleted",
-      message: `Your pilot "${deleted.pilotName}" has been removed.`,
-      type: "hire_pilot_deleted",
-      data: { pilotId },
-      url: `/seller/pilots`,
-      pubsub,
-    });
+        if (deleted.certifications?.length) {
+          for (const cert of deleted.certifications) {
+            if (cert.url) await deleteFirebaseFile(cert.url);
+          }
+        }
 
-    /* ================= SELLER PUSH ================= */
+        if (deleted.resume?.url) {
+          await deleteFirebaseFile(deleted.resume.url);
+        }
 
-    if (seller?.fcmTokens?.length) {
-      await sendSellerPush(
-        seller.fcmTokens,
-        "🗑 Pilot Listing Deleted",
-        `Your pilot "${deleted.pilotName}" has been deleted successfully.`,
-        {
-          pilotId,
+        const seller = await Seller.findOne({ customId: deleted.sellerId });
+
+        /* ================= SELLER DB NOTIFICATION ================= */
+
+        await createSellerNotification({
+          sellerId: deleted.sellerId,
+          title: "🗑 Pilot Listing Deleted",
+          message: `Your pilot "${deleted.pilotName}" has been removed.`,
           type: "hire_pilot_deleted",
+          data: { pilotId },
+          url: `/seller/pilots`,
+          pubsub,
+        });
+
+        /* ================= SELLER PUSH ================= */
+
+        if (seller?.fcmTokens?.length) {
+          await sendSellerPush(
+            seller.fcmTokens,
+            "🗑 Pilot Listing Deleted",
+            `Your pilot "${deleted.pilotName}" has been deleted successfully.`,
+            {
+              pilotId,
+              type: "hire_pilot_deleted",
+            }
+          );
         }
+
+        return {
+          success: true,
+          message: "Pilot and files deleted successfully",
+        };
+      } catch (err) {
+        console.error("❌ Error deleting pilot:", err);
+        throw new Error("Failed to delete pilot: " + err.message);
+      }
+    },
+
+    adminUpdateHirePilotStatus: async (_, { pilotId, adminStatus }, { pubsub }) => {
+      const updated = await HirePilot.findOneAndUpdate(
+        { pilotId },
+        { adminStatus },
+        { new: true }
       );
-    }
+      if (!updated) throw new Error("Pilot not found");
 
-    return {
-      success: true,
-      message: "Pilot and files deleted successfully",
-    };
-  } catch (err) {
-    console.error("❌ Error deleting pilot:", err);
-    throw new Error("Failed to delete pilot: " + err.message);
-  }
-},
+      const seller = await Seller.findOne({ customId: updated.sellerId });
 
-   adminUpdateHirePilotStatus: async (_, { pilotId, adminStatus }, { pubsub }) => {
-  const updated = await HirePilot.findOneAndUpdate(
-    { pilotId },
-    { adminStatus },
-    { new: true }
-  );
-  if (!updated) throw new Error("Pilot not found");
+      /* ================= EMAIL ================= */
 
-  const seller = await Seller.findOne({ customId: updated.sellerId });
-
-  /* ================= EMAIL ================= */
-
-  if (seller?.email) {
-    await sendSellerStatusMail({
-      to: seller.email,
-      productType: "Hire Pilot",
-      productName: updated.pilotName,
-      status: adminStatus,
-    });
-  }
-
-  /* ================= SELLER PUSH ================= */
-
-  if (seller?.fcmTokens?.length) {
-    if (adminStatus === "approved") {
-      await sendSellerPush(
-        seller.fcmTokens,
-        "✅ Pilot Approved",
-        `Your pilot "${updated.pilotName}" has been approved.`,
-        {
-          pilotId,
+      if (seller?.email) {
+        await sendSellerStatusMail({
+          to: seller.email,
+          productType: "Hire Pilot",
+          productName: updated.pilotName,
           status: adminStatus,
-          type: "hire_pilot_approved",
+        });
+      }
+
+      /* ================= SELLER PUSH ================= */
+
+      if (seller?.fcmTokens?.length) {
+        if (adminStatus === "approved") {
+          await sendSellerPush(
+            seller.fcmTokens,
+            "✅ Pilot Approved",
+            `Your pilot "${updated.pilotName}" has been approved.`,
+            {
+              pilotId,
+              status: adminStatus,
+              type: "hire_pilot_approved",
+            }
+          );
         }
-      );
-    }
 
-    if (adminStatus === "rejected") {
-      await sendSellerPush(
-        seller.fcmTokens,
-        "❌ Pilot Rejected",
-        `Your pilot "${updated.pilotName}" was rejected. Please contact admin.`,
-        {
-          pilotId,
-          status: adminStatus,
-          type: "hire_pilot_rejected",
+        if (adminStatus === "rejected") {
+          await sendSellerPush(
+            seller.fcmTokens,
+            "❌ Pilot Rejected",
+            `Your pilot "${updated.pilotName}" was rejected. Please contact admin.`,
+            {
+              pilotId,
+              status: adminStatus,
+              type: "hire_pilot_rejected",
+            }
+          );
         }
-      );
-    }
 
-    if (adminStatus === "pending") {
-      await sendSellerPush(
-        seller.fcmTokens,
-        "⏳ Pilot Under Review",
-        `Your pilot "${updated.pilotName}" is under review.`,
-        {
-          pilotId,
-          status: adminStatus,
-          type: "hire_pilot_pending",
+        if (adminStatus === "pending") {
+          await sendSellerPush(
+            seller.fcmTokens,
+            "Pilot Under Review",
+            `Your pilot "${updated.pilotName}" is under review.`,
+            {
+              pilotId,
+              status: adminStatus,
+              type: "hire_pilot_pending",
+            }
+          );
         }
-      );
-    }
-  }
+      }
 
-  /* ================= PUBSUB ================= */
+      /* ================= PUBSUB ================= */
 
-  if (pubsub) {
-    await pubsub.publish("HIRE_PILOT_STATUS_CHANGED", {
-      hirePilotStatusChanged: {
-        pilotId,
-        pilotName: updated.pilotName,
-        adminStatus,
-        sellerId: updated.sellerId,
-      },
-    });
-  }
+      if (pubsub) {
+        await pubsub.publish("HIRE_PILOT_STATUS_CHANGED", {
+          hirePilotStatusChanged: {
+            pilotId,
+            pilotName: updated.pilotName,
+            adminStatus,
+            sellerId: updated.sellerId,
+          },
+        });
+      }
 
-  const result = await HirePilot.aggregate([
-    { $match: { _id: updated._id } },
-    ...baseLookup,
-  ]);
+      const result = await HirePilot.aggregate([
+        { $match: { _id: updated._id } },
+        ...baseLookup,
+      ]);
 
-  return result[0];
-},
+      return result[0];
+    },
 
 
     buyerUpdateHirePilotStatus: async (_, { pilotId, buyerStatus }, { pubsub }) => {
-  const updated = await HirePilot.findOneAndUpdate(
-    { pilotId },
-    { buyerStatus },
-    { new: true }
-  );
-  if (!updated) throw new Error("Pilot not found");
+      const updated = await HirePilot.findOneAndUpdate(
+        { pilotId },
+        { buyerStatus },
+        { new: true }
+      );
+      if (!updated) throw new Error("Pilot not found");
 
-  const seller = await Seller.findOne({ customId: updated.sellerId });
+      const seller = await Seller.findOne({ customId: updated.sellerId });
 
-  /* ================= EMAIL ================= */
+      /* ================= EMAIL ================= */
 
-  if (seller?.email) {
-    await sendSellerStatusMail({
-      to: seller.email,
-      productType: "Hire Pilot (Buyer Action)",
-      productName: updated.pilotName,
-      status: buyerStatus,
-    });
-  }
-
-  /* ================= SELLER DB NOTIFICATION ================= */
-
-  await createSellerNotification({
-    sellerId: updated.sellerId,
-    title: `Buyer ${buyerStatus.toUpperCase()} for ${updated.pilotName}`,
-    message: `A buyer has ${buyerStatus} your pilot post.`,
-    type: "buyer_hire_pilot_status",
-    data: { pilotId, buyerStatus },
-    url: `/seller/pilots/${updated.pilotId}`,
-    pubsub,
-  });
-
-  /* ================= SELLER PUSH ================= */
-
-  if (seller?.fcmTokens?.length) {
-    await sendSellerPush(
-      seller.fcmTokens,
-      `Buyer ${buyerStatus.toUpperCase()}`,
-      `A buyer has ${buyerStatus} your pilot "${updated.pilotName}".`,
-      {
-        pilotId,
-        buyerStatus,
-        type: "buyer_hire_pilot_status",
+      if (seller?.email) {
+        await sendSellerStatusMail({
+          to: seller.email,
+          productType: "Hire Pilot (Buyer Action)",
+          productName: updated.pilotName,
+          status: buyerStatus,
+        });
       }
-    );
-  }
 
-  const result = await HirePilot.aggregate(
-    [{ $match: { _id: updated._id } }, ...baseLookup]
-  );
+      /* ================= SELLER DB NOTIFICATION ================= */
 
-  return result[0];
-},
+      await createSellerNotification({
+        sellerId: updated.sellerId,
+        title: `Buyer ${buyerStatus.toUpperCase()} for ${updated.pilotName}`,
+        message: `A buyer has ${buyerStatus} your pilot post.`,
+        type: "buyer_hire_pilot_status",
+        data: { pilotId, buyerStatus },
+        url: `/seller/pilots/${updated.pilotId}`,
+        pubsub,
+      });
+
+      /* ================= SELLER PUSH ================= */
+
+      if (seller?.fcmTokens?.length) {
+        await sendSellerPush(
+          seller.fcmTokens,
+          `Buyer ${buyerStatus.toUpperCase()}`,
+          `A buyer has ${buyerStatus} your pilot "${updated.pilotName}".`,
+          {
+            pilotId,
+            buyerStatus,
+            type: "buyer_hire_pilot_status",
+          }
+        );
+      }
+
+      const result = await HirePilot.aggregate(
+        [{ $match: { _id: updated._id } }, ...baseLookup]
+      );
+
+      return result[0];
+    },
 
   },
 

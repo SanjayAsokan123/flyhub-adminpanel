@@ -5,27 +5,25 @@ export const orderTypeDefs = gql`
   scalar JSON
 
   type Item {
-  productId: String!
-  type: String!
-  name: String!
-  price: Float!
-  quantity: Int!
-  sellerId: String!
-  image: String!
-  status: String
-  rejectReason: String
-  cancelReason: String
-}
-
+    productId: String
+    type: String
+    name: String
+    price: Float
+    quantity: Int
+    sellerId: String
+    image: String
+    status: String
+    rejectReason: String
+    cancelReason: String
+  }
 
   type BuyerInfo {
-  buyerId: String!
-  name: String!
-  email: String
-  phone: String
-  address: String
-}
-
+    buyerId: String
+    name: String
+    email: String
+    phone: String
+    address: String
+  }
 
   type Payment {
     mode: String
@@ -41,23 +39,26 @@ export const orderTypeDefs = gql`
     transactionId: String
   }
 
- type Order {
-  orderId: String!
-  buyer: BuyerInfo!
-  items: [Item!]!
-  totalAmount: Float!
-  status: String!
-  createdAt: Date
-  updatedAt: Date
+  type Order {
+    orderId: String
+    buyer: BuyerInfo
+    items: [Item]
+    totalAmount: Float
+    status: String
+    payment: Payment
+    createdAt: Date
+    updatedAt: Date
 
-  invoiceUrl: String
-  invoiceNo: String
-  trackingNumber: String
-  trackingProvider: String
-  payoutStatus: String
-  sellerPackingSlips: JSON
-}
+    invoiceUrl: String
+    invoiceNo: String
 
+    trackingNumber: String
+    trackingProvider: String
+    payoutStatus: String
+
+    # sellerId -> PDF URL
+    sellerPackingSlips: JSON
+  }
 
   input BuyerInput {
     buyerId: String!

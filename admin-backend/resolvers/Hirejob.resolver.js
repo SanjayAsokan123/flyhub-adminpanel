@@ -243,7 +243,7 @@ export const jobResolvers = {
           if (status === "pending") {
             await sendSellerPush(
               seller.fcmTokens,
-              "⏳ Job Under Review",
+              "Job Under Review",
               `Your job "${updated.jobName}" is under review.`,
               {
                 jobId,

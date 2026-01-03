@@ -318,6 +318,14 @@ function Sidebar() {
                   </Link>
                 </li>
                 <li>
+                  <Link
+                    to="/buyer-pilot"
+                    className={isActive("/buyer-pilot") ? "active" : ""}
+                  >
+                    <FaUserTie /> Buyer Become a Pilot
+                  </Link>
+                </li>
+                <li>
                   <Link to="/job" className={isActive("/job") ? "active" : ""}>
                     <FaBriefcase /> Job posted by Seller
                   </Link>
@@ -420,7 +428,17 @@ function Sidebar() {
                 isActive("/tax") ? "active" : ""
               }
             >
-              <FaRegNewspaper /> Tax
+              <FaRegNewspaper /> Update Tax
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/popup"
+              className={
+                isActive("/popup") ? "active" : ""
+              }
+            >
+              <FaRegNewspaper /> Popup
             </Link>
           </li>
         </ul>

@@ -102,7 +102,7 @@ getPilotRentalsBySellerId: async (_, { sellerId }) => {
   if (seller?.fcmTokens?.length) {
     await sendSellerPush(
       seller.fcmTokens,
-      "New Pilot Rental Request 👨‍✈️",
+      "New Pilot Rental Request",
       `New booking received for pilot ${pilot.pilotName}`,
       {
         pilotId,
@@ -116,7 +116,7 @@ getPilotRentalsBySellerId: async (_, { sellerId }) => {
   if (buyer?.fcmToken) {
     await sendBuyerPush(
       buyer.fcmToken,
-      "Pilot Rental Submitted ⏳",
+      "Pilot Rental Submitted",
       `Your pilot rental request (${doc.pilot_rental_id}) is pending approval.`,
       {
         pilot_rental_id: doc.pilot_rental_id,
@@ -190,7 +190,7 @@ getPilotRentalsBySellerId: async (_, { sellerId }) => {
     if (status === "pending") {
       await sendBuyerPush(
         buyer.fcmToken,
-        "Pilot Rental Under Review ⏳",
+        "Pilot Rental Under Review",
         `Your booking for pilot ${pilot?.pilotName} is under review.`,
         { pilot_rental_id, type: "pilot_rental_pending" }
       );

@@ -2,7 +2,7 @@ import { Part } from "../models/Parts.model.js";
 import { Seller } from "../models/Seller.model.js";
 import { sendSellerStatusMail } from "../utils/emailService.js";
 import { createSellerNotification } from "../utils/createSellerNotification.js";
-import {calculateFinalPrice} from "../utils/TaxCalculator.js";
+import { calculateFinalPrice } from "../utils/TaxCalculator.js";
 import { sendPushNotification as sendSellerPush } from "../utils/SendPushNotification.js";
 
 import {
@@ -36,7 +36,7 @@ const baseLookupPart = [
       image: 1,
       status: 1,
       quantity: 1,
-      additionalInformation:1,
+      additionalInformation: 1,
       sellerId: 1,
       "sellerInfo.email": 1,
       "sellerInfo.phoneNumber": 1,
@@ -94,107 +94,107 @@ export const partResolvers = {
         throw new Error("Failed to fetch part");
       }
     },
-   approvedPartPaginated: async (_, { page, limit }) => {
-  const pageNumber = Math.max(page, 1);
-  const pageSize = Math.max(limit, 1);
-  const skip = (pageNumber - 1) * pageSize;
+    approvedPartPaginated: async (_, { page, limit }) => {
+      const pageNumber = Math.max(page, 1);
+      const pageSize = Math.max(limit, 1);
+      const skip = (pageNumber - 1) * pageSize;
 
-  const matchStage = { $match: { status: "approved" } };
+      const matchStage = { $match: { status: "approved" } };
 
-  const [result] = await Part.aggregate([
-    matchStage,
-    {
-      $facet: {
-        items: [
-          ...baseLookupPart,
-          { $skip: skip },
-          { $limit: pageSize },
-        ],
-        totalCount: [
-          { $count: "count" },
-        ],
-      },
+      const [result] = await Part.aggregate([
+        matchStage,
+        {
+          $facet: {
+            items: [
+              ...baseLookupPart,
+              { $skip: skip },
+              { $limit: pageSize },
+            ],
+            totalCount: [
+              { $count: "count" },
+            ],
+          },
+        },
+      ]);
+
+      const totalCount =
+        result.totalCount.length > 0 ? result.totalCount[0].count : 0;
+
+      return {
+        items: result.items,
+        totalCount,
+        page: pageNumber,
+        limit: pageSize,
+        pageCount: Math.ceil(totalCount / pageSize),
+      };
     },
-  ]);
-
-  const totalCount =
-    result.totalCount.length > 0 ? result.totalCount[0].count : 0;
-
-  return {
-    items: result.items,
-    totalCount,
-    page: pageNumber,
-    limit: pageSize,
-    pageCount: Math.ceil(totalCount / pageSize),
-  };
-},
 
   },
 
   Mutation: {
-   createPart: async (_, { input }, { pubsub }) => {
-  try {
-    const seller = await Seller.findOne({ customId: input.sellerId });
-    if (!seller) throw new Error("Seller not found");
+    createPart: async (_, { input }, { pubsub }) => {
+      try {
+        const seller = await Seller.findOne({ customId: input.sellerId });
+        if (!seller) throw new Error("Seller not found");
 
-    /* ================= PRICE CALCULATION ================= */
+        /* ================= PRICE CALCULATION ================= */
 
-    const { finalPrice } = await calculateFinalPrice(input.price);
-    input.price = finalPrice;
+        const { finalPrice } = await calculateFinalPrice(input.price);
+        input.price = finalPrice;
 
-    const newPartData = { ...input, status: "pending" };
+        const newPartData = { ...input, status: "pending" };
 
-    /* ================= IMAGE UPLOAD ================= */
+        /* ================= IMAGE UPLOAD ================= */
 
-    if (input.imageFile?.file) {
-      newPartData.image = await uploadSingleFile(
-        input.imageFile.file,
-        "parts"
-      );
-    }
-
-    const newPart = new Part(newPartData);
-    const saved = await newPart.save();
-
-    /* ================= SELLER DB NOTIFICATION ================= */
-
-    await createSellerNotification({
-      sellerId: input.sellerId,
-      title: "🧩 New Part Submitted",
-      message: `Your part "${input.name}" has been submitted for admin approval.`,
-      type: "part_submission",
-      data: { partId: saved.partId, status: "pending" },
-      url: `/seller/parts/${saved.partId}`,
-      pubsub,
-    });
-
-    /* ================= SELLER PUSH ================= */
-
-    if (seller.fcmTokens?.length) {
-      await sendSellerPush(
-        seller.fcmTokens,
-        "🧩 Part Submitted",
-        `Your part "${input.name}" has been submitted for approval.`,
-        {
-          partId: saved.partId,
-          status: "pending",
-          type: "part_submitted",
+        if (input.imageFile?.file) {
+          newPartData.image = await uploadSingleFile(
+            input.imageFile.file,
+            "parts"
+          );
         }
-      );
-    }
 
-    return {
-      ...saved.toObject(),
-      sellerInfo: {
-        email: seller.email,
-        phoneNumber: seller.phoneNumber,
-      },
-    };
-  } catch (err) {
-    console.error("❌ Error creating part:", err);
-    throw new Error("Failed to create part: " + err.message);
-  }
-},
+        const newPart = new Part(newPartData);
+        const saved = await newPart.save();
+
+        /* ================= SELLER DB NOTIFICATION ================= */
+
+        await createSellerNotification({
+          sellerId: input.sellerId,
+          title: "New Part Submitted",
+          message: `Your part "${input.name}" has been submitted for admin approval.`,
+          type: "part_submission",
+          data: { partId: saved.partId, status: "pending" },
+          url: `/seller/parts/${saved.partId}`,
+          pubsub,
+        });
+
+        /* ================= SELLER PUSH ================= */
+
+        if (seller.fcmTokens?.length) {
+          await sendSellerPush(
+            seller.fcmTokens,
+            "Part Submitted",
+            `Your part "${input.name}" has been submitted for approval.`,
+            {
+              partId: saved.partId,
+              status: "pending",
+              type: "part_submitted",
+            }
+          );
+        }
+
+        return {
+          ...saved.toObject(),
+          sellerInfo: {
+            email: seller.email,
+            phoneNumber: seller.phoneNumber,
+          },
+        };
+      } catch (err) {
+        console.error("❌ Error creating part:", err);
+        throw new Error("Failed to create part: " + err.message);
+      }
+    },
 
 
     updatePart: async (_, { partId, input }) => {
@@ -230,149 +230,149 @@ export const partResolvers = {
       }
     },
 
-   updatePartStatus: async (_, { partId, status }, { pubsub }) => {
-  try {
-    const updated = await Part.findOneAndUpdate(
-      { partId },
-      { status },
-      { new: true }
-    );
-    if (!updated) throw new Error("Part not found");
-
-    const seller = await Seller.findOne({ customId: updated.sellerId });
-
-    /* ================= EMAIL ================= */
-
-    if (seller?.email) {
-      await sendSellerStatusMail({
-        to: seller.email,
-        productType: "Part",
-        productName: updated.name,
-        status,
-      });
-    }
-
-    /* ================= SELLER PUSH ================= */
-
-    if (seller?.fcmTokens?.length) {
-      if (status === "approved") {
-        await sendSellerPush(
-          seller.fcmTokens,
-          "✅ Part Approved",
-          `Your part "${updated.name}" has been approved.`,
-          {
-            partId,
-            status,
-            type: "part_approved",
-          }
+    updatePartStatus: async (_, { partId, status }, { pubsub }) => {
+      try {
+        const updated = await Part.findOneAndUpdate(
+          { partId },
+          { status },
+          { new: true }
         );
-      }
+        if (!updated) throw new Error("Part not found");
 
-      if (status === "rejected") {
-        await sendSellerPush(
-          seller.fcmTokens,
-          "❌ Part Rejected",
-          `Your part "${updated.name}" was rejected. Please contact admin.`,
-          {
-            partId,
+        const seller = await Seller.findOne({ customId: updated.sellerId });
+
+        /* ================= EMAIL ================= */
+
+        if (seller?.email) {
+          await sendSellerStatusMail({
+            to: seller.email,
+            productType: "Part",
+            productName: updated.name,
             status,
-            type: "part_rejected",
-          }
-        );
-      }
-
-      if (status === "pending") {
-        await sendSellerPush(
-          seller.fcmTokens,
-          "⏳ Part Under Review",
-          `Your part "${updated.name}" is under review.`,
-          {
-            partId,
-            status,
-            type: "part_pending",
-          }
-        );
-      }
-    }
-
-    /* ================= SELLER DB NOTIFICATION ================= */
-
-    await createSellerNotification({
-      sellerId: updated.sellerId,
-      title: `Part ${status.toUpperCase()}`,
-      message:
-        status === "approved"
-          ? `Your part "${updated.name}" has been approved.`
-          : status === "rejected"
-          ? `Your part "${updated.name}" was rejected.`
-          : `Your part "${updated.name}" is under review.`,
-      type: "part_status",
-      data: { partId, status },
-      url: `/seller/parts/${partId}`,
-      pubsub,
-    });
-
-    return {
-      ...updated.toObject(),
-      sellerInfo: seller
-        ? { email: seller.email, phoneNumber: seller.phoneNumber }
-        : null,
-    };
-  } catch (err) {
-    console.error("❌ Error updating part status:", err);
-    throw new Error("Failed to update part status");
-  }
-},
- deletePart: async (_, { partId }, { pubsub }) => {
-  try {
-    const deleted = await Part.findOneAndDelete({ partId });
-    if (!deleted) throw new Error("Part not found");
-
-    /* ================= DELETE IMAGE ================= */
-
-    if (deleted.image) {
-      await deleteFirebaseFile(deleted.image);
-    }
-
-    const seller = await Seller.findOne({ customId: deleted.sellerId });
-
-    /* ================= SELLER DB NOTIFICATION ================= */
-
-    await createSellerNotification({
-      sellerId: deleted.sellerId,
-      title: "🗑️ Part Deleted",
-      message: `Your part "${deleted.name}" has been removed from the marketplace.`,
-      type: "part_deleted",
-      data: { partId },
-      url: `/seller/parts`,
-      pubsub,
-    });
-
-    /* ================= SELLER PUSH ================= */
-
-    if (seller?.fcmTokens?.length) {
-      await sendSellerPush(
-        seller.fcmTokens,
-        "🗑️ Part Deleted",
-        `Your part "${deleted.name}" has been deleted successfully.`,
-        {
-          partId,
-          type: "part_deleted",
+          });
         }
-      );
-    }
 
-    return {
-      ...deleted.toObject(),
-      sellerInfo: seller
-        ? { email: seller.email, phoneNumber: seller.phoneNumber }
-        : null,
-    };
-  } catch (err) {
-    console.error("❌ Error deleting part:", err);
-    throw new Error("Failed to delete part");
-  }
-},
+        /* ================= SELLER PUSH ================= */
+
+        if (seller?.fcmTokens?.length) {
+          if (status === "approved") {
+            await sendSellerPush(
+              seller.fcmTokens,
+              "✅ Part Approved",
+              `Your part "${updated.name}" has been approved.`,
+              {
+                partId,
+                status,
+                type: "part_approved",
+              }
+            );
+          }
+
+          if (status === "rejected") {
+            await sendSellerPush(
+              seller.fcmTokens,
+              "❌ Part Rejected",
+              `Your part "${updated.name}" was rejected. Please contact admin.`,
+              {
+                partId,
+                status,
+                type: "part_rejected",
+              }
+            );
+          }
+
+          if (status === "pending") {
+            await sendSellerPush(
+              seller.fcmTokens,
+              "Part Under Review",
+              `Your part "${updated.name}" is under review.`,
+              {
+                partId,
+                status,
+                type: "part_pending",
+              }
+            );
+          }
+        }
+
+        /* ================= SELLER DB NOTIFICATION ================= */
+
+        await createSellerNotification({
+          sellerId: updated.sellerId,
+          title: `Part ${status.toUpperCase()}`,
+          message:
+            status === "approved"
+              ? `Your part "${updated.name}" has been approved.`
+              : status === "rejected"
+                ? `Your part "${updated.name}" was rejected.`
+                : `Your part "${updated.name}" is under review.`,
+          type: "part_status",
+          data: { partId, status },
+          url: `/seller/parts/${partId}`,
+          pubsub,
+        });
+
+        return {
+          ...updated.toObject(),
+          sellerInfo: seller
+            ? { email: seller.email, phoneNumber: seller.phoneNumber }
+            : null,
+        };
+      } catch (err) {
+        console.error("❌ Error updating part status:", err);
+        throw new Error("Failed to update part status");
+      }
+    },
+    deletePart: async (_, { partId }, { pubsub }) => {
+      try {
+        const deleted = await Part.findOneAndDelete({ partId });
+        if (!deleted) throw new Error("Part not found");
+
+        /* ================= DELETE IMAGE ================= */
+
+        if (deleted.image) {
+          await deleteFirebaseFile(deleted.image);
+        }
+
+        const seller = await Seller.findOne({ customId: deleted.sellerId });
+
+        /* ================= SELLER DB NOTIFICATION ================= */
+
+        await createSellerNotification({
+          sellerId: deleted.sellerId,
+          title: "🗑️ Part Deleted",
+          message: `Your part "${deleted.name}" has been removed from the marketplace.`,
+          type: "part_deleted",
+          data: { partId },
+          url: `/seller/parts`,
+          pubsub,
+        });
+
+        /* ================= SELLER PUSH ================= */
+
+        if (seller?.fcmTokens?.length) {
+          await sendSellerPush(
+            seller.fcmTokens,
+            "🗑️ Part Deleted",
+            `Your part "${deleted.name}" has been deleted successfully.`,
+            {
+              partId,
+              type: "part_deleted",
+            }
+          );
+        }
+
+        return {
+          ...deleted.toObject(),
+          sellerInfo: seller
+            ? { email: seller.email, phoneNumber: seller.phoneNumber }
+            : null,
+        };
+      } catch (err) {
+        console.error("❌ Error deleting part:", err);
+        throw new Error("Failed to delete part");
+      }
+    },
 
   },
 };

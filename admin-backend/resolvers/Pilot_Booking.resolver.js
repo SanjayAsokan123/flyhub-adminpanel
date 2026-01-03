@@ -2,10 +2,7 @@ import { PilotBooking } from "../models/Pilot_Booking.model.js";
 import { HirePilot } from "../models/Hirepilot.model.js";
 import { Buyer } from "../models/Buyer.model.js";
 import { Seller } from "../models/Seller.model.js";
-// BUYER push notifications
 import { sendPushNotification as sendBuyerPush } from "../utils/pushNotification.js";
-
-// SELLER push notifications
 import { sendPushNotification as sendSellerPush } from "../utils/SendPushNotification.js";
 
 
@@ -70,8 +67,15 @@ export const pilotBookingResolvers = {
 
 
     getBuyerApprovedPilotBookings: async (_, { buyerId }) =>
-      await PilotBooking.find({ buyerId, status: "approved" })
-        .sort({ createdAt: -1 }),
+      await PilotBooking.find({
+        buyerId,
+        status: { $in: ["approved", "completed"] },
+        $or: [
+          { buyerDeleted: false },
+          { buyerDeleted: { $exists: false } }
+        ]
+      }).sort({ createdAt: -1 }),
+
 
     getBuyerRejectedPilotBookings: async (_, { buyerId }) =>
       await PilotBooking.find({ buyerId, status: "rejected" })
@@ -153,7 +157,7 @@ export const pilotBookingResolvers = {
         if (seller?.fcmTokens?.length > 0) {
           await sendSellerPush(
             seller.fcmTokens,
-            "New Pilot Booking 👨‍✈️",
+            "New Pilot Booking",
             `${input.buyerName} booked pilot ${pilot.pilotName}`,
             {
               bookingId: booking.bookingId,
@@ -169,7 +173,7 @@ export const pilotBookingResolvers = {
         if (buyer?.fcmTokens?.length > 0) {
           await sendBuyerPush(
             buyer.fcmTokens,
-            "Pilot Booking Submitted ⏳",
+            "Pilot Booking Submitted",
             `Your booking for pilot ${pilot.pilotName} is pending approval.`,
             {
               bookingId: booking.bookingId,
@@ -244,7 +248,7 @@ export const pilotBookingResolvers = {
         if (status === "pending") {
           await sendBuyerPush(
             buyer.fcmTokens,
-            "Pilot Booking Under Review ⏳",
+            "Pilot Booking Under Review",
             `Your pilot booking (${bookingId}) is under review.`,
             { bookingId, type: "pilot_booking_pending" }
           );

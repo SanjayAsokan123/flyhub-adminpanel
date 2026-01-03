@@ -12,7 +12,7 @@ export async function sendPushNotification(
   options = {}
 ) {
   const { isTopic = false } = options;
-  console.log("Notification page coming");
+  
   if (!target) return;
 
   const message = {

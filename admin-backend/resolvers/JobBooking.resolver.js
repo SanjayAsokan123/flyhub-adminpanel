@@ -95,7 +95,7 @@ export const jobApplicationResolvers = {
         if (seller?.fcmTokens?.length > 0) {
           await sendSellerPush(
             seller.fcmTokens,
-            "New Job Application 📩",
+            "New Job Application",
             `${input.name} applied for ${job.jobName}`,
             {
               applicationId: newApp._id,
@@ -111,7 +111,7 @@ export const jobApplicationResolvers = {
         if (buyer?.fcmTokens?.length > 0) {
           await sendBuyerPush(
             buyer.fcmTokens,
-            "Application Submitted ⏳",
+            "Application Submitted",
             `Your application for ${job.jobName} has been submitted successfully.`,
             {
               applicationId: newApp._id,
@@ -159,7 +159,7 @@ export const jobApplicationResolvers = {
         if (input.status === "pending") {
           await sendBuyerPush(
             buyer.fcmTokens,
-            "Application Under Review ⏳",
+            "Application Under Review",
             `Your application for ${updated.jobTitle} is under review.`,
             {
               applicationId: updated._id,

@@ -771,7 +771,7 @@ export const sellerResolvers = {
 
       deactivateSellerAccount: async (_, { reason }, { req, pubsub }) => {
           try {
-            console.log("🚀 Starting deactivateSellerAccount mutation");
+            console.log("Starting deactivateSellerAccount mutation");
             console.log("📝 Reason:", reason);
             console.log("📦 Request object exists:", !!req);
             
