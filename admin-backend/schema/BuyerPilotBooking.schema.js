@@ -39,7 +39,7 @@ export const buyerPilotBookingTypeDefs = gql`
   }
 
   extend type Query {
-    getBuyerPilotBookings(buyerId: String!): [BuyerPilotBooking!]!
+    getBuyersPilotBookings(buyerId: String!): [BuyerPilotBooking!]!
     getAllBuyerPilotBookings: [BuyerPilotBooking!]!
   }
 

@@ -23,6 +23,7 @@ function BuyerPilots() {
         const query = `
             query {
                 buyerPilots {
+                    _id
                     buyerPilotId
                     pilotName
                     pilotCompany
@@ -36,12 +37,22 @@ function BuyerPilots() {
                     certifications {
                         url
                     }
+                    profilePhoto {
+                        url
+                    }
                     description
                     newemail
                     newphoneNumber
                     adminStatus
                     buyerStatus
                     buyerId
+                    createdAt
+                    updatedAt
+                    buyer {
+                        name
+                        email
+                        phoneNumber
+                    }
                 }
             }
         `;
@@ -94,23 +105,22 @@ function BuyerPilots() {
         updatingIdsCopy.add(`${buyerPilotId}-${newStatus}`);
         setUpdatingIds(updatingIdsCopy);
 
-    const mutation = `
-  mutation AdminUpdateBuyerPilotStatus(
-    $buyerPilotId: String!,
-    $adminStatus: String!
-  ) {
-    adminUpdateBuyerPilotStatus(
-      buyerPilotId: $buyerPilotId,
-      adminStatus: $adminStatus
-    ) {
-      buyerPilotId
-      adminStatus
-      buyerStatus
-      pilotName
-    }
-  }
-`;
-
+        const mutation = `
+            mutation AdminUpdateBuyerPilotStatus(
+                $buyerPilotId: String!,
+                $adminStatus: String!
+            ) {
+                adminUpdateBuyerPilotStatus(
+                    buyerPilotId: $buyerPilotId,
+                    adminStatus: $adminStatus
+                ) {
+                    buyerPilotId
+                    adminStatus
+                    buyerStatus
+                    pilotName
+                }
+            }
+        `;
 
         try {
             const res = await fetch(GRAPHQL_URL, {
@@ -133,20 +143,30 @@ function BuyerPilots() {
             const result = await res.json();
 
             if (result.errors) {
-                setError(result.errors[0].message);
-            } else {
-                // Update local state
-                setPilots(prevPilots =>
-                    prevPilots.map(pilot =>
-                        pilot.buyerPilotId === buyerPilotId
-                            ? { ...pilot, adminStatus: newStatus.toLowerCase() }
-                            : pilot
-                    )
-                );
+                throw new Error(result.errors[0].message);
             }
+
+            // Update local state immediately for better UX
+            setPilots(prevPilots =>
+                prevPilots.map(pilot =>
+                    pilot.buyerPilotId === buyerPilotId
+                        ? { ...pilot, adminStatus: newStatus.toLowerCase() }
+                        : pilot
+                )
+            );
+
+            // Show success message
+            alert(`✅ Pilot "${result.data?.adminUpdateBuyerPilotStatus?.pilotName || buyerPilotId}" status updated to ${newStatus}`);
+
+            // Refresh the data to ensure consistency
+            setTimeout(() => {
+                fetchPilots();
+            }, 500);
+
         } catch (err) {
             console.error("Error updating pilot status:", err);
             setError(err.message);
+            alert(`❌ Failed to update status: ${err.message}`);
         } finally {
             const updatingIdsCopy = new Set(updatingIds);
             updatingIdsCopy.delete(`${buyerPilotId}-${newStatus}`);
@@ -162,14 +182,11 @@ function BuyerPilots() {
             return;
         }
 
-        if (!window.confirm(`Are you sure you want to delete pilot "${pilot.pilotName}"?`)) return;
+        if (!window.confirm(`Are you sure you want to delete pilot "${pilot.pilotName}"?\n\nThis action cannot be undone.`)) return;
 
         const mutation = `
             mutation DeleteBuyerPilot($buyerPilotId: String!) {
-                deleteBuyerPilot(buyerPilotId: $buyerPilotId) {
-                    buyerPilotId
-                    pilotName
-                }
+                deleteBuyerPilot(buyerPilotId: $buyerPilotId)
             }
         `;
 
@@ -189,11 +206,20 @@ function BuyerPilots() {
                 throw new Error(result.errors[0].message);
             }
 
-            // Update local state
+            // Update local state immediately
             setPilots(prev => prev.filter(pilot => pilot.buyerPilotId !== buyerPilotId));
+
+            alert(`✅ Pilot "${pilot.pilotName}" deleted successfully!`);
+
+            // Refresh the data
+            setTimeout(() => {
+                fetchPilots();
+            }, 500);
+
         } catch (err) {
             console.error("Error deleting pilot:", err);
             setError(err.message);
+            alert(`❌ Failed to delete pilot: ${err.message}`);
         }
     };
 
@@ -219,7 +245,7 @@ function BuyerPilots() {
         setExpandedBuyers(newExpanded);
     };
 
-    // Filter and sort pilots based on adminStatus
+    // Filter pilots based on adminStatus and search
     const filteredPilots = pilots
         .filter(pilot => {
             const matchesStatus = selectedStatus === "all" || pilot.adminStatus === selectedStatus;
@@ -228,32 +254,51 @@ function BuyerPilots() {
                 pilot.pilotName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 pilot.newemail.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 pilot.buyerPilotId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                pilot.specification?.toLowerCase().includes(searchTerm.toLowerCase());
+                pilot.specification?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                pilot.buyer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                pilot.location?.toLowerCase().includes(searchTerm.toLowerCase());
             return matchesStatus && matchesSearch;
-        })
-        .sort((a, b) => {
-            const key = sortConfig.key;
-            let aVal = a[key];
-            let bVal = b[key];
-
-            if (typeof aVal === "string") {
-                aVal = aVal.toLowerCase();
-                bVal = bVal.toLowerCase();
-            }
-
-            if (sortConfig.direction === "asc") {
-                return aVal > bVal ? 1 : -1;
-            } else {
-                return aVal < bVal ? 1 : -1;
-            }
         });
+
+    // Sort filtered pilots
+    const sortedPilots = [...filteredPilots].sort((a, b) => {
+        const key = sortConfig.key;
+        let aVal, bVal;
+
+        // Handle nested properties
+        if (key.includes('.')) {
+            const keys = key.split('.');
+            aVal = keys.reduce((obj, k) => obj && obj[k], a);
+            bVal = keys.reduce((obj, k) => obj && obj[k], b);
+        } else {
+            aVal = a[key];
+            bVal = b[key];
+        }
+
+        // Handle undefined/null values
+        if (aVal == null) aVal = '';
+        if (bVal == null) bVal = '';
+
+        // Convert to string for comparison
+        if (typeof aVal === 'string') {
+            aVal = aVal.toLowerCase();
+            bVal = bVal.toLowerCase();
+        }
+
+        if (sortConfig.direction === "asc") {
+            return aVal > bVal ? 1 : -1;
+        } else {
+            return aVal < bVal ? 1 : -1;
+        }
+    });
 
     // Group pilots by buyer
     const pilotsByBuyer = {};
-    pilots.forEach(pilot => {
+    sortedPilots.forEach(pilot => {
         if (!pilotsByBuyer[pilot.buyerId]) {
             pilotsByBuyer[pilot.buyerId] = {
                 buyerId: pilot.buyerId,
+                buyerName: pilot.buyer?.name || "Unknown Buyer",
                 pilots: []
             };
         }
@@ -285,23 +330,42 @@ function BuyerPilots() {
                 <div className="pilot-id-cell">
                     <strong>{pilot.buyerPilotId}</strong>
                     <small>Created: {formatDate(pilot.createdAt)}</small>
+                    <small>Updated: {formatDate(pilot.updatedAt)}</small>
                 </div>
             </td>
 
             <td className="sticky-col sticky-col-buyer-id">
                 <div className="buyer-id-cell">
                     <span>{pilot.buyerId}</span>
+                    {pilot.buyer?.name && <small>{pilot.buyer.name}</small>}
                 </div>
             </td>
 
             <td className="cell-name">
                 <div className="name-cell">
-                    <div className="avatar">{pilot.pilotName.charAt(0)}</div>
+                    {pilot.profilePhoto?.url ? (
+                        <img
+                            src={pilot.profilePhoto.url}
+                            alt={pilot.pilotName}
+                            className="avatar-img"
+                            onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.style.display = 'none';
+                                const parent = e.target.parentElement;
+                                const fallback = document.createElement('div');
+                                fallback.className = 'avatar';
+                                fallback.textContent = pilot.pilotName.charAt(0);
+                                parent.appendChild(fallback);
+                            }}
+                        />
+                    ) : (
+                        <div className="avatar">{pilot.pilotName.charAt(0)}</div>
+                    )}
                     <div className="name-info">
                         <strong>{pilot.pilotName}</strong>
-                        <small>{pilot.newemail}</small>
-                        <small>{pilot.newphoneNumber}</small>
-                        {pilot.pilotCompany && <small>Company: {pilot.pilotCompany}</small>}
+                        <small>📧 {pilot.newemail}</small>
+                        <small>📞 {pilot.newphoneNumber}</small>
+                        {pilot.pilotCompany && <small>🏢 {pilot.pilotCompany}</small>}
                     </div>
                 </div>
             </td>
@@ -309,6 +373,13 @@ function BuyerPilots() {
             <td className="cell-specialization">
                 <span className="specialization">{pilot.specification || "Not specified"}</span>
                 {pilot.location && <small>📍 {pilot.location}</small>}
+                {pilot.description && (
+                    <small className="description-truncate" title={pilot.description}>
+                        {pilot.description.length > 50
+                            ? `${pilot.description.substring(0, 50)}...`
+                            : pilot.description}
+                    </small>
+                )}
             </td>
 
             <td className="cell-price">
@@ -326,8 +397,10 @@ function BuyerPilots() {
                     <button
                         className="view-certs-btn"
                         onClick={() => {
-                            const urls = pilot.certifications.map(c => c.url).join('\n');
-                            alert(`Certification URLs:\n${urls}`);
+                            const certLinks = pilot.certifications.map((c, i) =>
+                                `${i + 1}. ${c.url}`
+                            ).join('\n');
+                            alert(`Certification URLs:\n${certLinks}`);
                         }}
                     >
                         👁️ View
@@ -343,11 +416,11 @@ function BuyerPilots() {
 
             <td className="cell-status">
                 <span className={`status-badge status-${pilot.adminStatus}`}>
-                    {pilot.adminStatus.toUpperCase()}
+                    {pilot.adminStatus?.toUpperCase() || "UNKNOWN"}
                 </span>
                 <br />
                 <small className="buyer-status">
-                    Buyer: {pilot.buyerStatus}
+                    Buyer Status: {pilot.buyerStatus || "N/A"}
                 </small>
             </td>
 
@@ -361,7 +434,7 @@ function BuyerPilots() {
                                 disabled={updatingIds.has(`${pilot.buyerPilotId}-approved`)}
                                 title="Approve pilot"
                             >
-                                {updatingIds.has(`${pilot.buyerPilotId}-approved`) ? "..." : "✅"}
+                                {updatingIds.has(`${pilot.buyerPilotId}-approved`) ? "⏳" : "✅"}
                             </button>
                             <button
                                 className="action-btn reject"
@@ -369,7 +442,7 @@ function BuyerPilots() {
                                 disabled={updatingIds.has(`${pilot.buyerPilotId}-rejected`)}
                                 title="Reject pilot"
                             >
-                                {updatingIds.has(`${pilot.buyerPilotId}-rejected`) ? "..." : "❌"}
+                                {updatingIds.has(`${pilot.buyerPilotId}-rejected`) ? "⏳" : "❌"}
                             </button>
                         </>
                     )}
@@ -382,7 +455,7 @@ function BuyerPilots() {
                                 disabled={updatingIds.has(`${pilot.buyerPilotId}-pending`)}
                                 title="Move to pending"
                             >
-                                {updatingIds.has(`${pilot.buyerPilotId}-pending`) ? "..." : "⏳"}
+                                {updatingIds.has(`${pilot.buyerPilotId}-pending`) ? "⏳" : "⏳"}
                             </button>
                             <button
                                 className="action-btn reject"
@@ -390,7 +463,7 @@ function BuyerPilots() {
                                 disabled={updatingIds.has(`${pilot.buyerPilotId}-rejected`)}
                                 title="Reject pilot"
                             >
-                                {updatingIds.has(`${pilot.buyerPilotId}-rejected`) ? "..." : "❌"}
+                                {updatingIds.has(`${pilot.buyerPilotId}-rejected`) ? "⏳" : "❌"}
                             </button>
                         </>
                     )}
@@ -403,7 +476,7 @@ function BuyerPilots() {
                                 disabled={updatingIds.has(`${pilot.buyerPilotId}-pending`)}
                                 title="Move to pending"
                             >
-                                {updatingIds.has(`${pilot.buyerPilotId}-pending`) ? "..." : "⏳"}
+                                {updatingIds.has(`${pilot.buyerPilotId}-pending`) ? "⏳" : "⏳"}
                             </button>
                             <button
                                 className="action-btn approve"
@@ -411,7 +484,7 @@ function BuyerPilots() {
                                 disabled={updatingIds.has(`${pilot.buyerPilotId}-approved`)}
                                 title="Approve pilot"
                             >
-                                {updatingIds.has(`${pilot.buyerPilotId}-approved`) ? "..." : "✅"}
+                                {updatingIds.has(`${pilot.buyerPilotId}-approved`) ? "⏳" : "✅"}
                             </button>
                         </>
                     )}
@@ -419,22 +492,29 @@ function BuyerPilots() {
                     <button
                         className="action-btn view"
                         onClick={() => {
-                            alert(`Pilot Details:\n
-ID: ${pilot.buyerPilotId}\n
-Name: ${pilot.pilotName}\n
-Email: ${pilot.newemail}\n
-Phone: ${pilot.newphoneNumber}\n
-Company: ${pilot.pilotCompany || "N/A"}\n
-Location: ${pilot.location || "N/A"}\n
-Specialization: ${pilot.specification || "N/A"}\n
-Availability: ${pilot.availability ? "Available" : "Not Available"}\n
-Price: ₹${pilot.price?.perHour || 0}/hour, ₹${pilot.price?.perDay || 0}/day\n
-Certifications: ${pilot.certifications?.length || 0}\n
-Admin Status: ${pilot.adminStatus}\n
-Buyer Status: ${pilot.buyerStatus}\n
-Description: ${pilot.description || "No description"}\n
-Created: ${formatDate(pilot.createdAt)}\n
-Updated: ${formatDate(pilot.updatedAt)}`);
+                            const details = `
+Pilot Details:
+────────────────────
+ID: ${pilot.buyerPilotId}
+Name: ${pilot.pilotName}
+Email: ${pilot.newemail}
+Phone: ${pilot.newphoneNumber}
+Buyer ID: ${pilot.buyerId}
+Buyer Name: ${pilot.buyer?.name || "N/A"}
+Company: ${pilot.pilotCompany || "N/A"}
+Location: ${pilot.location || "N/A"}
+Specialization: ${pilot.specification || "N/A"}
+Availability: ${pilot.availability ? "Available" : "Not Available"}
+Price: ₹${pilot.price?.perHour || 0}/hour, ₹${pilot.price?.perDay || 0}/day
+Certifications: ${pilot.certifications?.length || 0}
+Admin Status: ${pilot.adminStatus}
+Buyer Status: ${pilot.buyerStatus}
+Description: ${pilot.description || "No description"}
+Created: ${formatDate(pilot.createdAt)}
+Updated: ${formatDate(pilot.updatedAt)}
+────────────────────
+`;
+                            alert(details);
                         }}
                         title="View full details"
                     >
@@ -445,8 +525,9 @@ Updated: ${formatDate(pilot.updatedAt)}`);
                         className="action-btn delete"
                         onClick={() => deletePilot(pilot.buyerPilotId)}
                         title="Delete pilot"
+                        disabled={updatingIds.has(`${pilot.buyerPilotId}-deleting`)}
                     >
-                        🗑
+                        {updatingIds.has(`${pilot.buyerPilotId}-deleting`) ? "⏳" : "🗑"}
                     </button>
                 </div>
             </td>
@@ -465,8 +546,11 @@ Updated: ${formatDate(pilot.updatedAt)}`);
                             onClick={fetchPilots}
                             disabled={loading}
                         >
-                            ↻ Refresh
+                            {loading ? "⏳ Loading..." : "↻ Refresh"}
                         </button>
+                        <div className="total-count">
+                            Total: {pilots.length} pilots
+                        </div>
                     </div>
                 </div>
 
@@ -474,19 +558,35 @@ Updated: ${formatDate(pilot.updatedAt)}`);
                 <div className="search-container">
                     <input
                         type="text"
-                        placeholder="Search by name, email, ID, or specialization..."
+                        placeholder="Search by name, email, ID, buyer name, or location..."
                         className="search-input"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                     <span className="search-icon">🔍</span>
+                    {searchTerm && (
+                        <button
+                            className="clear-search"
+                            onClick={() => setSearchTerm("")}
+                            title="Clear search"
+                        >
+                            ✕
+                        </button>
+                    )}
                 </div>
 
                 {/* Error Message */}
-                {error && <div className="error-message">❌ {error}</div>}
-
-                {/* Loading State */}
-                {loading && <div className="loading-message">⏳ Loading buyer pilots...</div>}
+                {error && (
+                    <div className="error-message">
+                        ❌ {error}
+                        <button
+                            className="error-retry"
+                            onClick={fetchPilots}
+                        >
+                            Retry
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Status Tabs */}
@@ -496,6 +596,7 @@ Updated: ${formatDate(pilot.updatedAt)}`);
                         key={status}
                         className={`status-tab ${selectedStatus === status ? "active" : ""}`}
                         onClick={() => setSelectedStatus(status)}
+                        disabled={loading}
                     >
                         <span className="tab-icon">
                             {status === "all" && "👥"}
@@ -503,8 +604,12 @@ Updated: ${formatDate(pilot.updatedAt)}`);
                             {status === "approved" && "✅"}
                             {status === "rejected" && "❌"}
                         </span>
-                        <span className="tab-text">{status.charAt(0).toUpperCase() + status.slice(1)}</span>
-                        <span className="tab-count">{statusStats[status]}</span>
+                        <span className="tab-text">
+                            {status === "all" ? "All Pilots" : status.charAt(0).toUpperCase() + status.slice(1)}
+                        </span>
+                        <span className={`tab-count ${status}`}>
+                            {statusStats[status]}
+                        </span>
                     </button>
                 ))}
             </div>
@@ -513,13 +618,33 @@ Updated: ${formatDate(pilot.updatedAt)}`);
             <div className={`table-wrapper ${scrolled ? "scrolled" : ""}`}>
                 {loading ? (
                     <div className="no-data-message">
+                        <div className="loading-spinner"></div>
                         <p>⏳ Loading buyer pilots data...</p>
                     </div>
-                ) : filteredPilots.length === 0 ? (
+                ) : sortedPilots.length === 0 ? (
                     <div className="no-data-message">
                         <p>📭 No pilots found</p>
-                        {searchTerm && <p className="no-data-hint">Try adjusting your search</p>}
-                        {!searchTerm && pilots.length === 0 && <p className="no-data-hint">No pilot registrations yet</p>}
+                        {searchTerm && (
+                            <p className="no-data-hint">
+                                No results for "{searchTerm}". Try different keywords.
+                            </p>
+                        )}
+                        {!searchTerm && pilots.length === 0 && (
+                            <p className="no-data-hint">No buyer pilot registrations yet.</p>
+                        )}
+                        {!searchTerm && pilots.length > 0 && (
+                            <p className="no-data-hint">
+                                No {selectedStatus !== "all" ? selectedStatus : ""} pilots found.
+                                {selectedStatus !== "all" && (
+                                    <button
+                                        className="show-all-link"
+                                        onClick={() => setSelectedStatus("all")}
+                                    >
+                                        Show all pilots
+                                    </button>
+                                )}
+                            </p>
+                        )}
                     </div>
                 ) : (
                     <div className="table-scroll-container" ref={tableRef} onScroll={handleTableScroll}>
@@ -555,16 +680,7 @@ Updated: ${formatDate(pilot.updatedAt)}`);
                             </thead>
                             <tbody>
                                 {Object.values(pilotsByBuyer).map((buyerGroup) => {
-                                    const pilotsForBuyer = buyerGroup.pilots.filter(p => {
-                                        const matchesStatus = selectedStatus === "all" || p.adminStatus === selectedStatus;
-                                        const matchesSearch =
-                                            searchTerm === "" ||
-                                            p.pilotName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                            p.newemail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                            p.buyerPilotId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                            p.specification?.toLowerCase().includes(searchTerm.toLowerCase());
-                                        return matchesStatus && matchesSearch;
-                                    });
+                                    const pilotsForBuyer = buyerGroup.pilots;
 
                                     if (pilotsForBuyer.length === 0) return null;
 
@@ -582,46 +698,31 @@ Updated: ${formatDate(pilot.updatedAt)}`);
                                                 >
                                                     <td colSpan="9" className="buyer-header-cell">
                                                         <span className="expand-icon">
-                                                            {isExpanded ? "▼" : "▶"} Buyer: {buyerGroup.buyerId}
+                                                            {isExpanded ? "▼" : "▶"}
                                                         </span>
-                                                        <span className="pilot-count">({buyerGroup.pilots.length} pilots)</span>
+                                                        <span className="buyer-info">
+                                                            Buyer: {buyerGroup.buyerName} ({buyerGroup.buyerId})
+                                                        </span>
+                                                        <span className="pilot-count">
+                                                            {buyerGroup.pilots.length} pilot{buyerGroup.pilots.length > 1 ? 's' : ''}
+                                                        </span>
+                                                        <span className="status-summary">
+                                                            Approved: {buyerGroup.pilots.filter(p => p.adminStatus === 'approved').length} |
+                                                            Pending: {buyerGroup.pilots.filter(p => p.adminStatus === 'pending').length} |
+                                                            Rejected: {buyerGroup.pilots.filter(p => p.adminStatus === 'rejected').length}
+                                                        </span>
                                                     </td>
                                                 </tr>
                                             ) : null}
 
                                             {/* Show pilots - either all if ≤2, or expanded if >2 */}
-                                            {!hasMultiplePilots || isExpanded
-                                                ? pilotsForBuyer.sort((a, b) => {
-                                                    const key = sortConfig.key;
-                                                    let aVal = a[key];
-                                                    let bVal = b[key];
-
-                                                    // Handle nested properties
-                                                    if (key.includes('.')) {
-                                                        const keys = key.split('.');
-                                                        aVal = a[keys[0]][keys[1]];
-                                                        bVal = b[keys[0]][keys[1]];
-                                                    }
-
-                                                    if (typeof aVal === "string") {
-                                                        aVal = aVal.toLowerCase();
-                                                        bVal = bVal.toLowerCase();
-                                                    }
-                                                    return sortConfig.direction === "asc"
-                                                        ? aVal > bVal
-                                                            ? 1
-                                                            : -1
-                                                        : aVal < bVal
-                                                            ? 1
-                                                            : -1;
-                                                }).map((pilot) => (
-                                                    <PilotRow
-                                                        key={pilot.buyerPilotId}
-                                                        pilot={pilot}
-                                                        isSubRow={hasMultiplePilots}
-                                                    />
-                                                ))
-                                                : null}
+                                            {(!hasMultiplePilots || isExpanded) && pilotsForBuyer.map((pilot) => (
+                                                <PilotRow
+                                                    key={pilot.buyerPilotId}
+                                                    pilot={pilot}
+                                                    isSubRow={hasMultiplePilots}
+                                                />
+                                            ))}
                                         </React.Fragment>
                                     );
                                 })}
@@ -661,6 +762,12 @@ Updated: ${formatDate(pilot.updatedAt)}`);
                         ₹{pilots.length > 0
                             ? Math.round(pilots.reduce((sum, p) => sum + (p.price?.perHour || 0), 0) / pilots.length)
                             : 0}
+                    </span>
+                </div>
+                <div className="stat-item">
+                    <span className="stat-label">Showing:</span>
+                    <span className="stat-value showing">
+                        {sortedPilots.length} of {pilots.length}
                     </span>
                 </div>
             </div>

@@ -30,6 +30,7 @@ import { globalSearchTypeDefs } from "../GlobalSearch.schema.js";
 import { announcementTypeDefs } from "../Announcement.schema.js";
 import { buyerPilotTypeDefs } from "../BuyerPilot.schema.js";
 import { buyerPilotBookingTypeDefs } from "../BuyerPilotBooking.schema.js";
+import { combinedPilotTypeDefs } from "../combinedPilot.schema.js";
 
 export const typeDefs = [
   baseTypeDefs,
@@ -62,4 +63,5 @@ export const typeDefs = [
   announcementTypeDefs,
   buyerPilotTypeDefs,
   buyerPilotBookingTypeDefs,
+  combinedPilotTypeDefs,
 ];

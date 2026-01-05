@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "../styles/HirePilot.css";
 
-const GRAPHQL_URL = "https://flyhub-webadmin-4.onrender.com/graphql";
+const GRAPHQL_URL = "http://localhost:5001/graphql";
 
 export default function HirePilotsDashboard() {
   const [pilots, setPilots] = useState([]);

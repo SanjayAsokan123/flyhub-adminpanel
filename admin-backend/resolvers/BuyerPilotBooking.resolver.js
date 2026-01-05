@@ -3,7 +3,7 @@ import { Buyer } from "../models/Buyer.model.js";
 
 export const buyerPilotBookingResolvers = {
   Query: {
-    getBuyerPilotBookings: async (_, { buyerId }) => {
+    getBuyersPilotBookings: async (_, { buyerId }) => {
       return await BuyerPilotBooking.find({
         buyerId,
         bookerDeleted: false,

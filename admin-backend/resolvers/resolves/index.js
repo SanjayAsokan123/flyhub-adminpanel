@@ -28,6 +28,7 @@ import { globalSearchResolvers } from "../GlobalSearch.resolver.js";
 import { announcementResolvers } from "../Announcement.resolver.js";
 import { buyerPilotResolvers } from "../BuyerPilot.resolver.js";
 import { buyerPilotBookingResolvers } from "../BuyerPilotBooking.resolver.js";
+import {combinedPilotResolvers} from "../combinedPilot.resolver.js";
 
 export const resolves = [
   droneResolvers,
@@ -60,4 +61,5 @@ export const resolves = [
   announcementResolvers,
   buyerPilotResolvers,
   buyerPilotBookingResolvers,
+  combinedPilotResolvers,
 ];
