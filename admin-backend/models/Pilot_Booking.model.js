@@ -1,4 +1,3 @@
-// models/Pilot_Booking.model.js
 import mongoose from "mongoose";
 
 const pilotBookingSchema = new mongoose.Schema(

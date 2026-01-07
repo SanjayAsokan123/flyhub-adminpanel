@@ -9,13 +9,13 @@ import { sendPushNotification as sendSellerPush } from "../utils/SendPushNotific
 
 export const pilotBookingResolvers = {
   Query: {
-    // Get pilot bookings for seller (both their own pilots and buyer pilots they booked)
+
     getSellerPilotBookings: async (_, { sellerId, status }) => {
       let query = {
         $or: [
-          // Seller's own pilot bookings (seller pilots)
+
           { sellerId, pilotType: "seller" },
-          // Seller booked buyer pilots (as a buyer)
+
           { buyerId: sellerId, pilotType: "buyer" }
         ]
       };
@@ -28,7 +28,7 @@ export const pilotBookingResolvers = {
         .sort({ createdAt: -1 });
     },
 
-    // Get bookings for a specific seller pilot
+
     getSellerPilotBookingsByPilot: async (_, { sellerId, pilotId, status }) => {
       const query = {
         sellerId,
@@ -44,18 +44,18 @@ export const pilotBookingResolvers = {
         .sort({ createdAt: -1 });
     },
 
-    // Get bookings for buyer (both as booker and as pilot owner)
+
     getBuyerPilotBookings: async (_, { buyerId, status, role = "booker" }) => {
       let query = {};
 
       if (role === "booker") {
-        // Buyer booked pilots (as booker)
+
         query = { buyerId };
       } else if (role === "owner") {
-        // Buyer's own pilot listings that got booked
+
         query = { pilotOwnerId: buyerId, pilotType: "buyer" };
       } else {
-        // Both roles
+
         query = {
           $or: [
             { buyerId },
@@ -68,7 +68,7 @@ export const pilotBookingResolvers = {
         query.status = status;
       }
 
-      // Don't show deleted bookings
+
       query.$or = [
         { buyerDeleted: false },
         { buyerDeleted: { $exists: false } }
@@ -78,7 +78,7 @@ export const pilotBookingResolvers = {
         .sort({ createdAt: -1 });
     },
 
-    // Get pending bookings for seller (their pilot listings)
+
     getSellerPendingPilotBookings: async (_, { sellerId }) => {
       const pilots = await HirePilot.find({ sellerId });
       const pilotIds = pilots.map(p => p.pilotId);
@@ -109,7 +109,7 @@ export const pilotBookingResolvers = {
       const pilots = await HirePilot.find({ sellerId });
       const pilotIds = pilots.map(p => p.pilotId);
 
-      return await PilotBooking.find({       
+      return await PilotBooking.find({
         pilotId: { $in: pilotIds },
         pilotType: "seller",
         status: "rejected"
@@ -127,7 +127,7 @@ export const pilotBookingResolvers = {
       }).sort({ createdAt: -1 });
     },
 
-    // Buyer side queries (unchanged but support both types)
+
     getBuyerPendingPilotBookings: async (_, { buyerId }) =>
       await PilotBooking.find({
         buyerId,
@@ -156,11 +156,13 @@ export const pilotBookingResolvers = {
       await PilotBooking.find({ buyerId, status: "completed" })
         .sort({ createdAt: -1 }),
 
-    // Get bookings for buyer pilot owner
+
+    // In pilotBookingResolvers.js - Update this query:
     getBuyerPilotOwnerBookings: async (_, { buyerId, status }) => {
       const query = {
         pilotOwnerId: buyerId,
-        pilotType: "buyer"
+        pilotType: "buyer",
+        buyerDeleted: false
       };
 
       if (status && status !== "all") {
@@ -170,12 +172,43 @@ export const pilotBookingResolvers = {
       return await PilotBooking.find(query)
         .sort({ createdAt: -1 });
     },
+    getBuyerSpecificPilotBookings: async (_, { buyerId, status }) => {
+      let query = {
+        buyerId: buyerId,
+        pilotType: "buyer"  // Only show buyer pilots
+      };
 
+      if (status && status !== "all") {
+        query.status = status;
+      }
+
+      // Exclude soft-deleted bookings
+      query.$or = [
+        { buyerDeleted: false },
+        { buyerDeleted: { $exists: false } }
+      ];
+
+      return await PilotBooking.find(query).sort({ createdAt: -1 });
+    },
+
+    // Get buyer pilot bookings for a specific buyer as owner
+    getBuyerPilotOwnerSpecificBookings: async (_, { buyerId, status }) => {
+      let query = {
+        pilotOwnerId: buyerId,
+        pilotType: "buyer"  // Only show buyer pilots
+      };
+
+      if (status && status !== "all") {
+        query.status = status;
+      }
+
+      return await PilotBooking.find(query).sort({ createdAt: -1 });
+    },
     getAllPilotBookings: async () => {
       return await PilotBooking.find().sort({ createdAt: -1 });
     },
 
-    // Get booking stats
+
     getPilotBookingStats: async (_, { userId, userType }) => {
       let query = {};
 
@@ -209,7 +242,7 @@ export const pilotBookingResolvers = {
   },
 
   Mutation: {
-    // In your pilotBookingResolvers.js - Update the bookPilot mutation
+
 
     bookPilot: async (_, { input }, { user }) => {
       try {
@@ -240,8 +273,11 @@ export const pilotBookingResolvers = {
         let sellerId = null;
         let seller = null;
         let buyerPilotOwner = null;
+        if (pilotType === "buyer" && buyerPilotOwner) {
+          booking.pilotOwnerName = buyerPilotOwner.name;
+          booking.pilotOwnerPhone = buyerPilotOwner.phoneNumber;
+        }
 
-        // 1️⃣ Find pilot based on type - FIXED: Remove _id from search
         if (pilotType === "seller") {
           console.log("📋 Searching for SELLER pilot with ID:", pilotId);
 
@@ -271,7 +307,7 @@ export const pilotBookingResolvers = {
         } else if (pilotType === "buyer") {
           console.log("📋 Searching for BUYER pilot with ID:", pilotId);
 
-          // FIXED: Only search by custom string fields, not _id
+
           pilot = await BuyerPilot.findOne({
             $or: [
               { buyerPilotId: pilotId },
@@ -287,7 +323,7 @@ export const pilotBookingResolvers = {
 
           console.log("✅ Found buyer pilot:", pilot.pilotName);
 
-          // FIXED: Only search by buyerId, not _id
+
           pilotOwner = await Buyer.findOne({
             buyerId: pilot.buyerId
           }).select("email name phoneNumber fcmTokens");
@@ -304,12 +340,12 @@ export const pilotBookingResolvers = {
           throw new Error("Invalid pilot type. Must be 'seller' or 'buyer'");
         }
 
-        // 2️⃣ Validate pilot status
+
         if (pilot.adminStatus !== "approved") {
           throw new Error(`Pilot is not approved for booking. Current status: ${pilot.adminStatus}`);
         }
 
-        // 3️⃣ Prevent duplicate booking
+
         const existingBooking = await PilotBooking.findOne({
           buyerId: buyerId,
           pilotId: pilotId,
@@ -327,7 +363,7 @@ export const pilotBookingResolvers = {
           };
         }
 
-        // 4️⃣ Fetch buyer (the person booking) - FIXED: Only search by buyerId
+
         const buyer = await Buyer.findOne({
           buyerId: buyerId
         });
@@ -339,7 +375,7 @@ export const pilotBookingResolvers = {
 
         console.log("✅ Found booking buyer:", buyer.name);
 
-        // 5️⃣ Create booking
+
         console.log("📝 Creating booking record...");
 
         const booking = new PilotBooking({
@@ -359,13 +395,13 @@ export const pilotBookingResolvers = {
           startTime: startTime,
           endTime: endTime,
 
-          // For seller pilots
+
           sellerId: sellerId,
           sellerEmail: seller?.email,
           sellerName: seller?.name,
           sellerPhone: seller?.phoneNumber,
 
-          // For buyer pilots (who owns the pilot listing)
+
           pilotOwnerId: pilotOwnerId,
           pilotOwnerType: pilotOwnerType,
 
@@ -377,7 +413,7 @@ export const pilotBookingResolvers = {
 
         console.log("✅ Booking created with ID:", booking.bookingId);
 
-        // 6️⃣ Calculate total amount
+
         const startDateTime = new Date(`${date}T${startTime}`);
         const endDateTime = new Date(`${date}T${endTime}`);
         const durationHours = (endDateTime - startDateTime) / (1000 * 60 * 60);
@@ -387,7 +423,7 @@ export const pilotBookingResolvers = {
         booking.duration = durationHours;
         await booking.save();
 
-        // 7️⃣ Send Notifications
+
         console.log("🔔 Sending notifications...");
 
         if (pilotType === "seller" && seller?.fcmTokens?.length > 0) {
@@ -420,7 +456,7 @@ export const pilotBookingResolvers = {
           console.log("📤 Buyer pilot owner notification sent");
         }
 
-        // Notification to buyer (booker)
+
         if (buyer?.fcmTokens?.length > 0) {
           await sendBuyerPush(
             buyer.fcmTokens,
@@ -434,7 +470,7 @@ export const pilotBookingResolvers = {
           console.log("📤 Booker notification sent");
         }
 
-        // 8️⃣ Success response
+
         console.log("🎉 Booking completed successfully!");
 
         return {
@@ -465,34 +501,33 @@ export const pilotBookingResolvers = {
         };
       }
     },
-    updatePilotBookingStatus: async (_, { bookingId, status, userType, userId }) => {
+    updatePilotBookingStatus: async (_, { input }, { user }) => {
+      const { bookingId, status, userType, userId } = input;
+
       const valid = ["pending", "approved", "rejected", "completed", "cancelled"];
       if (!valid.includes(status)) throw new Error("Invalid status");
 
       const booking = await PilotBooking.findOne({ bookingId });
       if (!booking) throw new Error("Booking not found");
 
-      // Authorization check
+      // Authorization logic
       if (booking.pilotType === "seller") {
-        // For seller pilots, only seller can update
         if (userType !== "seller" || booking.sellerId !== userId) {
           throw new Error("Unauthorized: Only the pilot owner can update this booking");
         }
       } else if (booking.pilotType === "buyer") {
-        // For buyer pilots, only the pilot owner (buyer) can update
         if (booking.pilotOwnerId !== userId) {
           throw new Error("Unauthorized: Only the pilot owner can update this booking");
         }
       }
 
-      // Update status
       const updated = await PilotBooking.findOneAndUpdate(
         { bookingId },
         { status },
         { new: true }
       );
 
-      // Find parties involved
+      // Send notifications
       const buyer = await Buyer.findOne({ buyerId: updated.buyerId });
 
       let pilotOwner = null;
@@ -502,9 +537,6 @@ export const pilotBookingResolvers = {
         pilotOwner = await Buyer.findOne({ buyerId: updated.pilotOwnerId });
       }
 
-      // ======================
-      // 🔔 NOTIFY BUYER (booker)
-      // ======================
       if (buyer?.fcmTokens?.length > 0) {
         let title = "Pilot Booking Updated";
         let message = `Your pilot booking (${bookingId}) status has been updated to ${status}.`;
@@ -531,9 +563,6 @@ export const pilotBookingResolvers = {
         );
       }
 
-      // ======================
-      // 🔔 NOTIFY PILOT OWNER
-      // ======================
       if (pilotOwner?.fcmTokens?.length > 0) {
         const pushMethod = updated.pilotType === "seller" ? sendSellerPush : sendBuyerPush;
 
@@ -569,7 +598,7 @@ export const pilotBookingResolvers = {
       booking.buyerDeleted = true;
       await booking.save();
 
-      // Also notify pilot owner about cancellation
+
       let pilotOwner = null;
       if (booking.pilotType === "seller") {
         pilotOwner = await Seller.findOne({ customId: booking.sellerId });
@@ -601,7 +630,6 @@ export const pilotBookingResolvers = {
         return { success: false, message: "Booking not found" };
       }
 
-      // Verify ownership
       if (pilotType === "seller" && booking.sellerId !== ownerId) {
         return { success: false, message: "Unauthorized" };
       }
@@ -613,7 +641,7 @@ export const pilotBookingResolvers = {
       booking.ownerDeleted = true;
       await booking.save();
 
-      // Notify buyer about cancellation
+
       const buyer = await Buyer.findOne({ buyerId: booking.buyerId });
       if (buyer?.fcmTokens?.length > 0) {
         await sendBuyerPush(

@@ -31,6 +31,7 @@ const baseLookup = [
       createdAt: 1,
       updatedAt: 1,
       buyer: {
+        id: "$buyerDetails._id", 
         buyerId: "$buyerDetails.buyerId",
         name: "$buyerDetails.name",
         email: "$buyerDetails.email",

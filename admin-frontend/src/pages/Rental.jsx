@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "../styles/Rental.css";
 
-const GRAPHQL_URL = "https://flyhub-webadmin-4.onrender.com/graphql";
+const GRAPHQL_URL = "http://localhost:5001/graphql";
 
 function Rentals() {
   const [rentals, setRentals] = useState([]);
@@ -232,16 +232,16 @@ function Rentals() {
     console.error("All delete attempts failed. Last error:", lastError);
     alert(
       `Delete failed. Reason: ${lastError ||
-        "unknown"}. Check console for detailed response. Common causes: mutation not defined, argument name mismatch (id vs rentalId), CORS, or endpoint incorrect.`
+      "unknown"}. Check console for detailed response. Common causes: mutation not defined, argument name mismatch (id vs rentalId), CORS, or endpoint incorrect.`
     );
 
     // Helpful tip in console
     console.info(
       "If server expects a different mutation or returns a custom object, test in GraphQL playground with variations such as:\n" +
-        "1) mutation { deleteRental(rentalId: \"XYZ\") }\n" +
-        "2) mutation { deleteRental(id: \"XYZ\") }\n" +
-        "3) mutation { deleteRental(rentalId: \"XYZ\") { rentalId } }\n" +
-        "Check server logs and network tab for exact GraphQL error messages."
+      "1) mutation { deleteRental(rentalId: \"XYZ\") }\n" +
+      "2) mutation { deleteRental(id: \"XYZ\") }\n" +
+      "3) mutation { deleteRental(rentalId: \"XYZ\") { rentalId } }\n" +
+      "Check server logs and network tab for exact GraphQL error messages."
     );
   };
 

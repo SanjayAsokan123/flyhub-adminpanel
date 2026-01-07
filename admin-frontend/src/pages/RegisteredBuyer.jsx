@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "../styles/RegisteredBuyer.css";
 
-const GRAPHQL_URL = "https://flyhub-webadmin-4.onrender.com/graphql";
+const GRAPHQL_URL = "http://localhost:5001/graphql";
 
 function BuyersList() {
   const [buyers, setBuyers] = useState([]);
@@ -121,7 +121,7 @@ function BuyersList() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <button className="buyer-search-button" onClick={() => {}}>
+        <button className="buyer-search-button" onClick={() => { }}>
           🔍
         </button>
       </div>

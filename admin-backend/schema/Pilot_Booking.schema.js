@@ -175,7 +175,8 @@ export const pilotBookingTypeDefs = gql`
     ): [PilotBooking!]!
     
     getPilotBookingById(bookingId: String!): PilotBookingWithDetails
-    
+    getBuyerSpecificPilotBookings(buyerId: String!, status: String): [PilotBooking!]!
+    getBuyerPilotOwnerSpecificBookings(buyerId: String!, status: String): [PilotBooking!]!
     # Stats
     getPilotBookingStats(userId: String!, userType: String!): BookingStats!
     getAdminPilotBookingStats: BookingStats!
@@ -195,12 +196,11 @@ export const pilotBookingTypeDefs = gql`
     # Update booking
     updatePilotBookingStatus(input: UpdateBookingStatusInput!): PilotBooking!
     
-    # Cancel/delete
     deletePilotBookingByBuyer(
-      bookingId: String!
-      buyerId: String!
-      reason: String
-    ): DeleteResponse!
+    bookingId: String!
+    buyerId: String!
+    # REMOVE THIS: reason: String
+  ): DeleteResponse!
     
     deletePilotBookingByOwner(
       bookingId: String!
