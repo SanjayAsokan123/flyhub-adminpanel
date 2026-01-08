@@ -2,8 +2,12 @@ import mongoose from "mongoose";
 
 const announcementSchema = new mongoose.Schema(
   {
-    image: {
+    imagePath: {
       type: String, // frontend image key or image name
+      required: true,
+    },
+    imageUrl: {
+      type: String, 
       required: true,
     },
     title: {

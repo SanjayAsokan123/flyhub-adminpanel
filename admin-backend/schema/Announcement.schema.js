@@ -3,7 +3,8 @@ import { gql } from "apollo-server-express";
 export const announcementTypeDefs = gql`
   type Announcement {
     id: ID!
-    image: String!
+    imagePath: String!
+    imageUrl: String!
     title: String!
     message: String!
     isActive: Boolean!
@@ -19,11 +20,13 @@ export const announcementTypeDefs = gql`
 
   type Query {
     getActiveAnnouncement: Announcement
+    getAllAnnouncements: [Announcement]
   }
 
   type Mutation {
     createAnnouncement(
-      image: String!
+      imagePath: String!
+      imageUrl: String!
       title: String!
       message: String!
       isActive: Boolean
@@ -31,7 +34,8 @@ export const announcementTypeDefs = gql`
 
     updateAnnouncement(
       id: ID!
-      image: String
+      imagePath: String
+      imageUrl: String
       title: String
       message: String
       isActive: Boolean

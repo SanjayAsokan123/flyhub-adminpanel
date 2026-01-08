@@ -168,10 +168,10 @@ export const combinedPilotResolvers = {
         allPilots = sortPilots(allPilots, search.sortBy);
       }
 
-      // Get total count
+     
       const totalCount = allPilots.length;
 
-      // Apply pagination
+      
       const paginatedPilots = allPilots.slice(skip, skip + pageSize);
 
       return {

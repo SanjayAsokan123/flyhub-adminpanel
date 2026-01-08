@@ -14,7 +14,7 @@ import HirePilot from "./pages/HirePilot";
 import HireJob from "./pages/HireJob";
 import Regulatory from "./pages/Regulatory";
 import Settings from "./pages/Settings";
-import Popup from "./pages/Popup";
+import Popup from "./pages/Announcement";
 import PilotBookingStatus from "./pages/PilotBookingStatus";
 import ServiceBookingStatus from "./pages/ServiceBookingStatus";
 import DroneBookingStatus from "./pages/DroneBookingStatus";
@@ -59,7 +59,7 @@ export default function App() {
                   <Route path="/sold-product" element={<SoldProducts />} />
                   <Route path="/regulatory" element={<Regulatory />} />
                   <Route path="/settings" element={<Settings />} />
-                  <Route path="/popup" element={<Popup />} />
+                  <Route path="/announcement" element={<Popup />} />
                   <Route path="/pilot" element={<HirePilot />} />
                   <Route path="/job" element={<HireJob />} />
                   <Route path="/orders" element={<Orders/>} />

@@ -433,9 +433,9 @@ function Sidebar() {
           </li>
           <li>
             <Link
-              to="/popup"
+              to="/announcement"
               className={
-                isActive("/popup") ? "active" : ""
+                isActive("/announcement") ? "active" : ""
               }
             >
               <FaRegNewspaper /> Popup

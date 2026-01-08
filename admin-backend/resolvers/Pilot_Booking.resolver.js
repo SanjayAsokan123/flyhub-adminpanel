@@ -1,4 +1,3 @@
-// resolvers/pilotBookingResolvers.js
 import { PilotBooking } from "../models/Pilot_Booking.model.js";
 import { HirePilot } from "../models/Hirepilot.model.js";
 import { BuyerPilot } from "../models/BuyerPilot.model.js";
@@ -15,15 +14,12 @@ export const pilotBookingResolvers = {
         $or: [
 
           { sellerId, pilotType: "seller" },
-
-          { buyerId: sellerId, pilotType: "buyer" }
+          { buyerId: sellerId, pilotType: "buyer" },
         ]
       };
-
       if (status && status !== "all") {
         query.status = status;
       }
-
       return await PilotBooking.find(query)
         .sort({ createdAt: -1 });
     },

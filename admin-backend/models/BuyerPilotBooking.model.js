@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-
 const buyerPilotBookingSchema = new mongoose.Schema(
   {
     buyerPilotBookingId: {

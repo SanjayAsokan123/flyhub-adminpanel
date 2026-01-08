@@ -1,14 +1,47 @@
 // src/components/AnnouncementManager.js
 import React, { useState, useEffect } from 'react';
+// import { uploadSingleFile } from '../../../admin-backend/utils/uploadToFirebase.js';
 import '../styles/Announcement.css';
+
+const GRAPHQL_ENDPOINT = 'http://localhost:5001/graphql';
+const UPLOAD_ENDPOINT = 'http://localhost:5001/upload';
+
+// Utility function to upload image to Firebase
+const uploadImage = async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder", "announcements");
+
+    const res = await fetch(UPLOAD_ENDPOINT, {
+        method: "POST",
+        body: formData,
+    });
+
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Upload failed");
+    }
+
+    const data = await res.json();
+
+    if (!data.success || !data.url) {
+        throw new Error("Invalid upload response");
+    }
+
+    return {
+        url: data.url,
+        path: data.path,
+    };
+};
+
 
 // AnnouncementItem Component
 function AnnouncementItem({ announcement, loading, onEdit, onDelete }) {
     return (
         <div className="announcement-item">
-            {announcement.image && (
+            {announcement.imageUrl && (
                 <img
-                    src={announcement.image}
+                    src={announcement.imageUrl}
                     alt={announcement.title}
                     className="announcement-item__image"
                 />
@@ -71,27 +104,23 @@ function AnnouncementList({ announcements, loading, onEdit, onDelete }) {
 }
 
 // AnnouncementForm Component
-function AnnouncementForm({ 
-    formData, 
-    editingId, 
-    loading, 
-    message, 
-    onFormChange, 
-    onFormSubmit, 
-    onCancel 
+function AnnouncementForm({
+    formData,
+    editingId,
+    loading,
+    message,
+    onFormChange,
+    onFormSubmit,
+    onCancel
 }) {
-    
+
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const base64 = event.target.result;
-                onFormChange({ ...formData, image: base64 });
-            };
-            reader.readAsDataURL(file);
+            onFormChange({ ...formData, imageFile: file });
         }
     };
+
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -121,12 +150,20 @@ function AnnouncementForm({
                     onChange={handleImageChange}
                     className="announcement-form__input"
                 />
-                {formData.image && (
-                    <div className="announcement-form__image-preview">
-                        <img src={formData.image} alt="Preview" />
-                    </div>
-                )}
-                {!formData.image && (
+                {/* Image Preview Logic */}
+                {formData.imageFile ? (
+                    <img
+                        src={URL.createObjectURL(formData.imageFile)}
+                        alt="Preview"
+                        className="announcement-form__image-preview"
+                    />
+                ) : formData.imageUrl ? (
+                    <img
+                        src={formData.imageUrl}
+                        alt="Preview"
+                        className="announcement-form__image-preview"
+                    />
+                ) : (
                     <div className="announcement-form__image-preview announcement-form__image-preview--empty">
                         No image selected
                     </div>
@@ -176,7 +213,12 @@ function AnnouncementForm({
                 <button
                     className="announcement-button announcement-button--primary"
                     onClick={onFormSubmit}
-                    disabled={loading || (!formData.title || !formData.message)}
+                    disabled={
+                        loading ||
+                        !formData.title ||
+                        !formData.message ||
+                        (!formData.imageFile && !formData.imageUrl)
+                    }
                 >
                     {loading ? 'Processing...' : editingId ? 'Update' : 'Create'}
                 </button>
@@ -201,13 +243,16 @@ function AnnouncementManager() {
     const [message, setMessage] = useState('');
     const [editingId, setEditingId] = useState(null);
     const [formData, setFormData] = useState({
-        image: '',
+        imageUrl: '',
+        imagePath: '',
+        imageFile: null,
         title: '',
         message: '',
         isActive: false,
     });
 
-    const GRAPHQL_ENDPOINT = 'https://flyhub-webadmin-4.onrender.com/graphql';
+
+
 
     // Fetch announcements
     const fetchAnnouncements = async () => {
@@ -218,9 +263,9 @@ function AnnouncementManager() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     query: `{
-                        getActiveAnnouncement {
+                        getAllAnnouncements {
                             id
-                            image
+                            imageUrl
                             title
                             message
                             isActive
@@ -231,8 +276,8 @@ function AnnouncementManager() {
                 }),
             });
             const result = await response.json();
-            if (result.data?.getActiveAnnouncement) {
-                setAnnouncements([result.data.getActiveAnnouncement]);
+            if (result.data?.getAllAnnouncements) {
+                setAnnouncements(result.data.getAllAnnouncements);
             }
         } catch (error) {
             setMessage({ type: 'Popup', text: 'No Latest Update Anncouncement' });
@@ -246,131 +291,109 @@ function AnnouncementManager() {
 
     // Create announcement
     const handleCreate = async () => {
-        if (!formData.title || !formData.message) {
-            setMessage({ type: 'error', text: 'Title and message are required' });
-            return false;
-        }
-
         setLoading(true);
         try {
+            let imageData = {};
+
+            if (formData.imageFile) {
+                imageData = await uploadImage(formData.imageFile);
+            }
+
             const response = await fetch(GRAPHQL_ENDPOINT, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     query: `
-                        mutation {
-                            createAnnouncement(
-                                image: "${formData.image.replace(/"/g, '\\"')}"
-                                title: "${formData.title.replace(/"/g, '\\"')}"
-                                message: "${formData.message.replace(/"/g, '\\"')}"
-                                isActive: ${formData.isActive}
-                            ) {
-                                success
-                                message
-                                data {
-                                    id
-                                    image
-                                    title
-                                    message
-                                    isActive
-                                    createdAt
-                                    updatedAt
-                                }
-                            }
-                        }
-                    `,
+                mutation {
+                    createAnnouncement(
+                    title: ${JSON.stringify(formData.title)}
+                    message: ${JSON.stringify(formData.message)}
+                    isActive: ${formData.isActive}
+                    imageUrl: ${JSON.stringify(imageData.url || "")}
+                    imagePath: ${JSON.stringify(imageData.path || "")}
+                    ) {
+                    success
+                    }
+                }
+                `,
                 }),
             });
 
             const result = await response.json();
-            if (result.data?.createAnnouncement?.success) {
-                setMessage({ type: 'success', text: 'Announcement created successfully' });
-                resetForm();
-                fetchAnnouncements();
-                return true;
-            } else {
-                setMessage({ type: 'error', text: result.data?.createAnnouncement?.message });
-                return false;
+            if (result.errors) {
+                console.error("GraphQL Errors:", result.errors);
+                setMessage({ type: "error", text: "Failed to create announcement" });
+                return;
             }
-        } catch (error) {
-            setMessage({ type: 'error', text: error.message });
-            return false;
+
+            resetForm();
+            fetchAnnouncements();
+        } catch (err) {
+            setMessage({ type: "error", text: err.message });
         } finally {
             setLoading(false);
         }
     };
+
 
     // Update announcement
     const handleUpdate = async () => {
-        if (!editingId) return false;
-        if (!formData.title || !formData.message) {
-            setMessage({ type: 'error', text: 'Title and message are required' });
-            return false;
-        }
-
         setLoading(true);
         try {
-            const updateData = {
-                title: formData.title,
-                message: formData.message,
-                isActive: formData.isActive,
-            };
+            let imageData = {};
 
-            if (formData.image && formData.image.startsWith('data:')) {
-                updateData.image = formData.image;
+            if (formData.imageFile) {
+                imageData = await uploadImage(formData.imageFile);
             }
 
-            const imageField = updateData.image
-                ? `image: "${updateData.image.replace(/"/g, '\\"')}"`
-                : '';
+            // Construct mutation args dynamically
+            const mutationArgs = [
+                `id: "${editingId}"`,
+                `title: ${JSON.stringify(formData.title)}`,
+                `message: ${JSON.stringify(formData.message)}`,
+                `isActive: ${formData.isActive}`
+            ];
+
+            if (imageData.url) {
+                mutationArgs.push(`imageUrl: ${JSON.stringify(imageData.url)}`);
+                mutationArgs.push(`imagePath: ${JSON.stringify(imageData.path)}`);
+            }
 
             const response = await fetch(GRAPHQL_ENDPOINT, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     query: `
-                        mutation {
-                            updateAnnouncement(
-                                id: "${editingId}"
-                                ${imageField}
-                                title: "${updateData.title.replace(/"/g, '\\"')}"
-                                message: "${updateData.message.replace(/"/g, '\\"')}"
-                                isActive: ${updateData.isActive}
-                            ) {
-                                success
-                                message
-                                data {
-                                    id
-                                    image
-                                    title
-                                    message
-                                    isActive
-                                    createdAt
-                                    updatedAt
-                                }
-                            }
-                        }
-                    `,
+                mutation {
+                    updateAnnouncement(
+                        ${mutationArgs.join('\n')}
+                    ) {
+                    success
+                    }
+                }
+                `,
                 }),
             });
 
             const result = await response.json();
-            if (result.data?.updateAnnouncement?.success) {
-                setMessage({ type: 'success', text: 'Announcement updated successfully' });
-                resetForm();
-                fetchAnnouncements();
-                return true;
-            } else {
-                setMessage({ type: 'error', text: result.data?.updateAnnouncement?.message });
-                return false;
+            if (result.errors) {
+                console.error("GraphQL Errors:", result.errors);
+                setMessage({ type: "error", text: "Failed to update announcement" });
+                return;
             }
-        } catch (error) {
-            setMessage({ type: 'error', text: error.message });
-            return false;
+
+            resetForm();
+            fetchAnnouncements();
+        } catch (err) {
+            console.error(err);
+            setMessage({ type: "error", text: err.message });
         } finally {
             setLoading(false);
         }
     };
+
+
+
 
     // Delete announcement
     const handleDelete = async (id) => {
@@ -414,18 +437,22 @@ function AnnouncementManager() {
     const handleEdit = (announcement) => {
         setEditingId(announcement.id);
         setFormData({
-            image: announcement.image,
+            imageUrl: announcement.imageUrl,
+            imagePath: announcement.imagePath,
+            imageFile: null,
             title: announcement.title,
             message: announcement.message,
             isActive: announcement.isActive,
         });
+
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     // Reset form
     const resetForm = () => {
         setFormData({
-            image: '',
+            imageUrl: '',
+            imagePath: '',
             title: '',
             message: '',
             isActive: false,

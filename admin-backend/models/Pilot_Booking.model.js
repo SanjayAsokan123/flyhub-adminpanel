@@ -12,7 +12,6 @@ const pilotBookingSchema = new mongoose.Schema(
       type: String,
       enum: ["seller", "buyer"],
       required: true,
-      default: "seller"
     },
     
     buyerId: { type: String, required: true },

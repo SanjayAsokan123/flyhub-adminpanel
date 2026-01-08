@@ -1,4 +1,5 @@
 import Announcement from "../models/Announcement.model.js";
+import { deleteFirebaseFile } from "../utils/uploadToFirebase.js";
 
 export const announcementResolvers = {
   Query: {
@@ -7,9 +8,14 @@ export const announcementResolvers = {
       return await Announcement.findOne({ isActive: true })
         .sort({ createdAt: -1 });
     },
+    // Fetch all announcements (for Admin Panel)
+    getAllAnnouncements: async () => {
+      return await Announcement.find().sort({ createdAt: -1 });
+    },
   },
 
   Mutation: {
+    // ✅ CREATE
     // ✅ CREATE
     createAnnouncement: async (_, args) => {
       try {
@@ -30,23 +36,30 @@ export const announcementResolvers = {
       }
     },
 
+
+    // ✏️ UPDATE
     // ✏️ UPDATE
     updateAnnouncement: async (_, { id, ...updates }) => {
       try {
-        const updatedAnnouncement =
-          await Announcement.findByIdAndUpdate(
-            id,
-            updates,
-            { new: true }
-          );
-
-        if (!updatedAnnouncement) {
+        const announcement = await Announcement.findById(id);
+        if (!announcement) {
           return {
             success: false,
             message: "Announcement not found",
             data: null,
           };
         }
+
+        // 🔁 Replace image if new one provided
+        if (updates.imagePath && updates.imagePath !== announcement.imagePath) {
+          await deleteFileFromFirebase(announcement.imagePath);
+        }
+
+        const updatedAnnouncement = await Announcement.findByIdAndUpdate(
+          id,
+          updates,
+          { new: true }
+        );
 
         return {
           success: true,
@@ -65,9 +78,9 @@ export const announcementResolvers = {
     // ❌ DELETE
     deleteAnnouncement: async (_, { id }) => {
       try {
-        const deleted = await Announcement.findByIdAndDelete(id);
+        const announcement = await Announcement.findById(id);
 
-        if (!deleted) {
+        if (!announcement) {
           return {
             success: false,
             message: "Announcement not found",
@@ -75,10 +88,15 @@ export const announcementResolvers = {
           };
         }
 
+        // 🗑️ Delete image first
+        await deleteFirebaseFile(announcement.imagePath);
+
+        await Announcement.findByIdAndDelete(id);
+
         return {
           success: true,
           message: "Announcement deleted successfully",
-          data: deleted,
+          data: announcement,
         };
       } catch (error) {
         return {
@@ -88,5 +106,6 @@ export const announcementResolvers = {
         };
       }
     },
+
   },
 };
