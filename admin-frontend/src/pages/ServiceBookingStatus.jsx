@@ -1,10 +1,6 @@
 import React, { useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import "../styles/ServiceBookingStatus.css";
-
-// ---------------------------------------------------------
-// GRAPHQL QUERY (in same file)
-// ---------------------------------------------------------
 const GET_ALL_CONTACTS = gql`
   query GetAllContacts($page: Int, $limit: Int, $sortBy: String) {
     getAllContacts(page: $page, limit: $limit, sortBy: $sortBy) {
@@ -99,6 +95,7 @@ export default function ServiceBookingStatus() {
                 <th>#</th>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Phone</th>
                 <th>Location</th>
                 <th>Status</th>
                 <th>Date</th>
@@ -112,6 +109,7 @@ export default function ServiceBookingStatus() {
                   <td>{index + 1}</td>
                   <td>{b.name}</td>
                   <td>{b.email}</td>
+                  <td>{b.phone || "—"}</td>
                   <td>{b.location}</td>
                   <td>{b.status}</td>
                   <td>{new Date(b.date).toLocaleDateString()}</td>

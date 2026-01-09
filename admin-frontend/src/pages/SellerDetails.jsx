@@ -6,7 +6,7 @@ import {
   FaPhone, FaEnvelope, FaSave, FaBan, FaCheck, FaTimesCircle, FaFileExcel, FaFileCsv, FaPrint, FaSpinner
 } from "react-icons/fa";
 
-const GRAPHQL_URL = "https://flyhub-webadmin-4.onrender.com/graphql";
+const GRAPHQL_URL = "http://localhost:5001/graphql";
 
 export default function SellerManagement() {
   const [sellers, setSellers] = useState([]);
@@ -143,7 +143,7 @@ export default function SellerManagement() {
     setLoading(false);
   };
 
- 
+
   const handleExport = async (format) => {
     setExporting(true);
     try {
@@ -166,7 +166,7 @@ export default function SellerManagement() {
       }));
 
       if (format === "excel" || format === "csv") {
-       
+
         const headers = Object.keys(dataToExport[0]);
         const csvContent = [
           headers.join(","),
@@ -187,7 +187,7 @@ export default function SellerManagement() {
         link.click();
         document.body.removeChild(link);
       } else if (format === "print") {
-       
+
         const printWindow = window.open('', '_blank');
         printWindow.document.write(`
           <html>
@@ -239,11 +239,11 @@ export default function SellerManagement() {
     }
   };
 
- 
+
   const handleUpdateSeller = async (sellerId, updateData) => {
-  setSellerUpdateLoading(true);
-  try {
-    const mutation = `
+    setSellerUpdateLoading(true);
+    try {
+      const mutation = `
       mutation UpdateSellerProfile($customId: String!, $input: SellerProfileInput!) {
         updateSellerProfile(customId: $customId, input: $input) {
           customId
@@ -262,60 +262,60 @@ export default function SellerManagement() {
       }
     `;
 
-   
-    const allowedInput = {
-      name: updateData.name,
-      companyName: updateData.companyName,
-      address: updateData.address,
-      PANnumber: updateData.PANnumber,
-      gstNumber: updateData.gstNumber,
-      bankName: updateData.bankName,
-      bankAccountNumber: updateData.bankAccountNumber,
-      bankIFCnumber: updateData.bankIFCnumber,
-      companyPan: updateData.companyPan,
-      shippingAddresses: updateData.shippingAddresses || [],
-      pickupAddresses: updateData.pickupAddresses || [],
-    };
 
-    const variables = {
-      customId: sellerId,
-      input: allowedInput
-    };
+      const allowedInput = {
+        name: updateData.name,
+        companyName: updateData.companyName,
+        address: updateData.address,
+        PANnumber: updateData.PANnumber,
+        gstNumber: updateData.gstNumber,
+        bankName: updateData.bankName,
+        bankAccountNumber: updateData.bankAccountNumber,
+        bankIFCnumber: updateData.bankIFCnumber,
+        companyPan: updateData.companyPan,
+        shippingAddresses: updateData.shippingAddresses || [],
+        pickupAddresses: updateData.pickupAddresses || [],
+      };
 
-    const data = await callGraphQL(mutation, variables);
-   
-    if (data.updateSellerProfile) {
-      // Update local state
-      setSellers(prev => prev.map(s =>
-        s.sellerId === sellerId ? {
-          ...s,
-          name: data.updateSellerProfile.name,
-          companyName: data.updateSellerProfile.companyName,
-          address: data.updateSellerProfile.address,
-          PANnumber: data.updateSellerProfile.PANnumber,
-          gstNumber: data.updateSellerProfile.gstNumber,
-          bankName: data.updateSellerProfile.bankName,
-          bankAccountNumber: data.updateSellerProfile.bankAccountNumber,
-          bankIFCnumber: data.updateSellerProfile.bankIFCnumber,
-          companyPan: data.updateSellerProfile.companyPan,
-          shippingAddresses: data.updateSellerProfile.shippingAddresses,
-          pickupAddresses: data.updateSellerProfile.pickupAddresses,
-        } : s
-      ));
+      const variables = {
+        customId: sellerId,
+        input: allowedInput
+      };
 
-      setShowEditSellerModal(false);
-      setEditingSeller(null);
-      alert("Seller updated successfully!");
+      const data = await callGraphQL(mutation, variables);
+
+      if (data.updateSellerProfile) {
+        // Update local state
+        setSellers(prev => prev.map(s =>
+          s.sellerId === sellerId ? {
+            ...s,
+            name: data.updateSellerProfile.name,
+            companyName: data.updateSellerProfile.companyName,
+            address: data.updateSellerProfile.address,
+            PANnumber: data.updateSellerProfile.PANnumber,
+            gstNumber: data.updateSellerProfile.gstNumber,
+            bankName: data.updateSellerProfile.bankName,
+            bankAccountNumber: data.updateSellerProfile.bankAccountNumber,
+            bankIFCnumber: data.updateSellerProfile.bankIFCnumber,
+            companyPan: data.updateSellerProfile.companyPan,
+            shippingAddresses: data.updateSellerProfile.shippingAddresses,
+            pickupAddresses: data.updateSellerProfile.pickupAddresses,
+          } : s
+        ));
+
+        setShowEditSellerModal(false);
+        setEditingSeller(null);
+        alert("Seller updated successfully!");
+      }
+    } catch (err) {
+      console.error("Error updating seller:", err);
+      alert("Failed to update seller: " + err.message);
+    } finally {
+      setSellerUpdateLoading(false);
     }
-  } catch (err) {
-    console.error("Error updating seller:", err);
-    alert("Failed to update seller: " + err.message);
-  } finally {
-    setSellerUpdateLoading(false);
-  }
-};
+  };
 
- 
+
   const handleSelectSeller = (sellerId) => {
     setSelectedSellers(prev => {
       if (prev.includes(sellerId)) {
@@ -326,7 +326,7 @@ export default function SellerManagement() {
     });
   };
 
- 
+
   const handleBulkStatusUpdate = async () => {
     if (!bulkStatusUpdate || selectedSellers.length === 0) {
       alert("Please select sellers and choose a status");
@@ -351,7 +351,7 @@ export default function SellerManagement() {
 
       await Promise.all(promises);
 
-     
+
       setSellers(prev => prev.map(seller =>
         selectedSellers.includes(seller.sellerId) ? {
           ...seller,
@@ -368,7 +368,7 @@ export default function SellerManagement() {
     }
   };
 
- 
+
   const handleEditSeller = (seller) => {
     setEditingSeller({
       sellerId: seller.sellerId,
@@ -390,7 +390,7 @@ export default function SellerManagement() {
     setShowEditSellerModal(true);
   };
 
- 
+
   useEffect(() => {
     let result = [...sellers];
     if (searchTerm) {
@@ -412,7 +412,7 @@ export default function SellerManagement() {
     setFilteredSellers(result);
   }, [searchTerm, statusFilter, sortBy, sellers]);
 
- 
+
   const [showExportModal, setShowExportModal] = useState(false);
   const fetchProductCounts = async (sellerId) => {
     const query = `
@@ -548,7 +548,7 @@ export default function SellerManagement() {
     `
     };
 
-   
+
     const query = `
     query GetSellerProducts($sellerId: String!) {
       getSellerView(sellerId: $sellerId) {
@@ -563,7 +563,7 @@ export default function SellerManagement() {
       const data = await callGraphQL(query, { sellerId });
       const view = data.getSellerView || {};
 
-     
+
       let products = [];
       switch (type) {
         case "drones":
@@ -1112,7 +1112,7 @@ export default function SellerManagement() {
     );
   };
 
- 
+
   const renderProductDetails = (product) => {
     const isEditing = editingRowId === getProductId(product);
 

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { gql, ApolloClient, InMemoryCache, HttpLink } from "@apollo/client";
 import "../styles/SellerApprove.css";
 
-const BACKEND_URL = "https://flyhub-webadmin-4.onrender.com/graphql";
+const BACKEND_URL = "http://localhost:5001/graphql";
 
 const client = new ApolloClient({
   link: new HttpLink({

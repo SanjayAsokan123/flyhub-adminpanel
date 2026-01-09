@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import "../styles/Approve.css";
 
-const GRAPHQL_URL = "https://flyhub-webadmin-4.onrender.com/graphql";
+const GRAPHQL_URL = "http://localhost:5001/graphql";
 
 function Approved() {
   const [activeType, setActiveType] = useState("drone");

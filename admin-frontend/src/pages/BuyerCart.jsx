@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import "../styles/BuyerCart.css";
 import { ApolloClient, InMemoryCache, ApolloProvider, useQuery, useMutation, gql } from "@apollo/client";
 
-const GRAPHQL_URL = "https://flyhub-webadmin-4.onrender.com/graphql";
+const GRAPHQL_URL = "http://localhost:5001/graphql";
 
 // GraphQL Queries & Mutations
 const GET_BUYERS = gql`

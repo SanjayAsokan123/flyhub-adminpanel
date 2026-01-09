@@ -1,16 +1,21 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import "../styles/Service.css";
 
-const GRAPHQL_URL = "https://flyhub-webadmin-4.onrender.com/graphql";
+const GRAPHQL_URL = "http://localhost:5001/graphql";
 
 function Services() {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState("all");
-  const [updatingStatus, setUpdatingStatus] = useState({ id: null, status: null });
+  const [updatingIds, setUpdatingIds] = useState(new Set());
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortOrder, setSortOrder] = useState("lifo"); // NEW: LIFO/FIFO state
+  const [sortConfig, setSortConfig] = useState({ key: "name", direction: "asc" });
+  const [expandedSellers, setExpandedSellers] = useState(new Set());
+  const tableRef = useRef(null);
+  const [scrolled, setScrolled] = useState(false);
+  const [viewingService, setViewingService] = useState(null);
+  const [sortOrder, setSortOrder] = useState("lifo");
 
   const fetchServices = async () => {
     setLoading(true);
@@ -64,11 +69,13 @@ function Services() {
     setLoading(false);
   };
 
-  // NEW: Delete service
+  // Delete service
   const deleteService = async (serviceId) => {
     if (!window.confirm("Are you sure you want to delete this service?")) return;
 
-    setUpdatingStatus({ id: serviceId, status: "deleting" });
+    const updatingIdsCopy = new Set(updatingIds);
+    updatingIdsCopy.add(`${serviceId}-deleting`);
+    setUpdatingIds(updatingIdsCopy);
 
     const mutation = `
       mutation DeleteService($serviceId: String!) {
@@ -101,23 +108,20 @@ function Services() {
 
       // Remove from UI immediately
       setServices((prev) => prev.filter((s) => s.serviceId !== serviceId));
-      alert("✅ Service deleted successfully!");
-
-      // REFRESH from database
-      setTimeout(() => {
-        fetchServices();
-      }, 500);
     } catch (err) {
-      alert("❌ Failed to delete service: " + err.message);
-      fetchServices();
+      setError(err.message);
     } finally {
-      setUpdatingStatus({ id: null, status: null });
+      const updatingIdsCopy = new Set(updatingIds);
+      updatingIdsCopy.delete(`${serviceId}-deleting`);
+      setUpdatingIds(updatingIdsCopy);
     }
   };
 
   // Update service status
   const updateServiceStatus = async (serviceId, newStatus) => {
-    setUpdatingStatus({ id: serviceId, status: newStatus });
+    const updatingIdsCopy = new Set(updatingIds);
+    updatingIdsCopy.add(`${serviceId}-${newStatus}`);
+    setUpdatingIds(updatingIdsCopy);
 
     const formattedServiceId = String(serviceId);
     const formattedStatus = newStatus.toLowerCase();
@@ -168,267 +172,635 @@ function Services() {
     } catch (err) {
       console.error("Update Error:", err);
       setError(err.message);
+    } finally {
+      const updatingIdsCopy = new Set(updatingIds);
+      updatingIdsCopy.delete(`${serviceId}-${newStatus}`);
+      setUpdatingIds(updatingIdsCopy);
     }
+  };
 
-    setUpdatingStatus({ id: null, status: null });
+  // View service details
+  const viewServiceDetails = (service) => {
+    setViewingService(service);
+  };
+
+  // Close service details modal
+  const closeServiceDetails = () => {
+    setViewingService(null);
+  };
+
+  // Handle scroll to show shadow on sticky columns
+  const handleTableScroll = (e) => {
+    const isScrolled = e.target.scrollLeft > 0;
+    setScrolled(isScrolled);
   };
 
   useEffect(() => {
     fetchServices();
   }, []);
 
-  // Filter services based on selected status and search term
-  const filteredServices = services.filter(service => {
-    const matchesStatus = selectedStatus === "all" ||
-                         service.status.toLowerCase() === selectedStatus;
-
-    const matchesSearch = searchTerm === "" ||
-                         service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         service.specificDrone.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         service.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (service.description && service.description.toLowerCase().includes(searchTerm.toLowerCase()));
-
-    return matchesStatus && matchesSearch;
-  });
-
-  // NEW: Apply LIFO/FIFO sorting
-  const sortedServices = [...filteredServices].sort((a, b) => {
-    if (sortOrder === "lifo") {
-      // LIFO (Last In, First Out) - reverse order by serviceId
-      return b.serviceId.localeCompare(a.serviceId);
+  // Toggle seller expansion
+  const toggleSeller = (sellerId) => {
+    const newExpanded = new Set(expandedSellers);
+    if (newExpanded.has(sellerId)) {
+      newExpanded.delete(sellerId);
     } else {
-      // FIFO (First In, First Out) - normal order by serviceId
-      return a.serviceId.localeCompare(b.serviceId);
+      newExpanded.add(sellerId);
     }
-  });
-
-  const statusColor = (status) => {
-    switch (status) {
-      case "approved":
-        return "status-approved";
-      case "pending":
-        return "status-pending";
-      case "rejected":
-        return "status-rejected";
-      default:
-        return "";
-    }
+    setExpandedSellers(newExpanded);
   };
 
-  const isUpdating = (serviceId, status) => {
-    return updatingStatus.id === serviceId && updatingStatus.status === status;
+  // Filter and sort services
+  const filteredServices = services
+    .filter(service => {
+      const matchesStatus = selectedStatus === "all" || service.status.toLowerCase() === selectedStatus;
+      const matchesSearch =
+        searchTerm === "" ||
+        service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        service.specificDrone.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        service.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (service.description && service.description.toLowerCase().includes(searchTerm.toLowerCase()));
+      return matchesStatus && matchesSearch;
+    })
+    .sort((a, b) => {
+      if (sortOrder === "lifo") {
+        // LIFO (Last In, First Out) - reverse order by serviceId
+        return b.serviceId.localeCompare(a.serviceId);
+      } else {
+        // FIFO (First In, First Out) - normal order by serviceId
+        return a.serviceId.localeCompare(b.serviceId);
+      }
+    });
+
+  const statusStats = {
+    all: services.length,
+    approved: services.filter(s => s.status === "approved").length,
+    pending: services.filter(s => s.status === "pending").length,
+    rejected: services.filter(s => s.status === "rejected").length,
   };
 
-  if (loading) return <div className="loading">Loading services...</div>;
-  if (error) return <div className="error">Error: {error}</div>;
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  const SortIcon = ({ column }) => {
+    if (sortConfig.key !== column) return <span className="sort-icon">↕</span>;
+    return <span className="sort-icon active">{sortConfig.direction === "asc" ? "↑" : "↓"}</span>;
+  };
+
+  const ServiceRow = ({ service, isSubRow = false }) => (
+    <tr key={service.serviceId} className={`service-row ${isSubRow ? 'sub-row' : ''}`}>
+      <td className="sticky-col sticky-col-id">
+        <div className="service-id-cell">
+          <div className="id-badge">{service.serviceId}</div>
+        </div>
+      </td>
+
+      <td className="sticky-col sticky-col-seller-id">
+        <div className="seller-id-cell">
+          <div className="id-badge seller">{service.sellerId}</div>
+          {service.sellerInfo && (
+            <div className="seller-quick-info">
+              <span className="seller-email">{service.sellerInfo.email}</span>
+            </div>
+          )}
+        </div>
+      </td>
+
+      <td className="cell-name">
+        <div className="name-cell">
+          {service.image && (
+            <img
+              src={service.image}
+              alt={service.name}
+              className="service-thumbnail"
+            />
+          )}
+          <div className="name-info">
+            <strong>{service.name}</strong>
+            <div className="service-details">
+              <span className="drone">{service.specificDrone}</span>
+              <span className="location">{service.location}</span>
+            </div>
+          </div>
+        </div>
+      </td>
+      
+      <td className="cell-experience">
+        <div className="experience-badge">
+          <span className="exp-icon">📊</span>
+          {service.experience} years
+        </div>
+      </td>
+      
+      <td className="cell-price">
+        <div className="price-badge">
+          <span className="price-icon">₹</span>
+          {service.price.toLocaleString('en-IN')}
+        </div>
+      </td>
+      
+      <td className="cell-status">
+        <span className={`status-badge status-${service.status}`}>
+          {service.status.toUpperCase()}
+        </span>
+      </td>
+      
+      <td className="cell-description">
+        <div className="description-text">
+          {service.description || "No description"}
+        </div>
+      </td>
+      
+      <td className="cell-actions">
+        <div className="action-buttons">
+          {service.status === "pending" && (
+            <>
+              <button
+                className="action-btn approve"
+                onClick={() => updateServiceStatus(service.serviceId, "approved")}
+                disabled={updatingIds.has(`${service.serviceId}-approved`)}
+                title="Approve service"
+              >
+                {updatingIds.has(`${service.serviceId}-approved`) ? (
+                  <span className="loading-dots"></span>
+                ) : (
+                  <span>✓</span>
+                )}
+              </button>
+              <button
+                className="action-btn reject"
+                onClick={() => updateServiceStatus(service.serviceId, "rejected")}
+                disabled={updatingIds.has(`${service.serviceId}-rejected`)}
+                title="Reject service"
+              >
+                {updatingIds.has(`${service.serviceId}-rejected`) ? (
+                  <span className="loading-dots"></span>
+                ) : (
+                  <span>✗</span>
+                )}
+              </button>
+            </>
+          )}
+
+          {service.status === "approved" && (
+            <>
+              <button
+                className="action-btn pending"
+                onClick={() => updateServiceStatus(service.serviceId, "pending")}
+                disabled={updatingIds.has(`${service.serviceId}-pending`)}
+                title="Move to pending"
+              >
+                {updatingIds.has(`${service.serviceId}-pending`) ? (
+                  <span className="loading-dots"></span>
+                ) : (
+                  <span>⏳</span>
+                )}
+              </button>
+              <button
+                className="action-btn reject"
+                onClick={() => updateServiceStatus(service.serviceId, "rejected")}
+                disabled={updatingIds.has(`${service.serviceId}-rejected`)}
+                title="Reject service"
+              >
+                {updatingIds.has(`${service.serviceId}-rejected`) ? (
+                  <span className="loading-dots"></span>
+                ) : (
+                  <span>✗</span>
+                )}
+              </button>
+            </>
+          )}
+
+          {service.status === "rejected" && (
+            <>
+              <button
+                className="action-btn pending"
+                onClick={() => updateServiceStatus(service.serviceId, "pending")}
+                disabled={updatingIds.has(`${service.serviceId}-pending`)}
+                title="Move to pending"
+              >
+                {updatingIds.has(`${service.serviceId}-pending`) ? (
+                  <span className="loading-dots"></span>
+                ) : (
+                  <span>⏳</span>
+                )}
+              </button>
+              <button
+                className="action-btn approve"
+                onClick={() => updateServiceStatus(service.serviceId, "approved")}
+                disabled={updatingIds.has(`${service.serviceId}-approved`)}
+                title="Approve service"
+              >
+                {updatingIds.has(`${service.serviceId}-approved`) ? (
+                  <span className="loading-dots"></span>
+                ) : (
+                  <span>✓</span>
+                )}
+              </button>
+            </>
+          )}
+
+          <button
+            className="action-btn view"
+            onClick={() => viewServiceDetails(service)}
+            title="View details"
+          >
+            👁
+          </button>
+
+          <button
+            className="action-btn delete"
+            onClick={() => deleteService(service.serviceId)}
+            disabled={updatingIds.has(`${service.serviceId}-deleting`)}
+            title="Delete service"
+          >
+            {updatingIds.has(`${service.serviceId}-deleting`) ? (
+              <span className="loading-dots"></span>
+            ) : (
+              <span>🗑</span>
+            )}
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
 
   return (
-    <div className="service-container">
-      <h2>🛠 Services Dashboard</h2>
+    <div className="services-container">
+      {/* Header */}
+      <div className="header-section">
+        <div className="header-top">
+          <div className="title-section">
+            <h1 className="page-title">Services Management</h1>
+            <p className="page-subtitle">Manage and oversee all service registrations and listings</p>
+          </div>
+          <div className="header-controls">
+            <div className="stats-summary">
+              <div className="summary-item">
+                <span className="summary-label">TOTAL</span>
+                <span className="summary-value">{services.length}</span>
+              </div>
+              <div className="summary-item active">
+                <span className="summary-label">APPROVED</span>
+                <span className="summary-value">{statusStats.approved}</span>
+              </div>
+            </div>
+            <button
+              className="refresh-btn"
+              onClick={fetchServices}
+              disabled={loading}
+            >
+              <span className="refresh-icon">↻</span>
+              {loading ? "Refreshing..." : "Refresh Data"}
+            </button>
+          </div>
+        </div>
 
-      {/* Search Bar */}
-      <div className="search-container">
-        <input
-          type="text"
-          placeholder="Search services by name, drone, location, or description..."
-          className="search-input"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <button className="search-button" onClick={() => {}}>
-          🔍
-        </button>
+        {/* Search Bar */}
+        <div className="search-container">
+          <span className="search-icon">🔍</span>
+          <input
+            type="text"
+            placeholder="Search services by name, drone, location, or description..."
+            className="search-input"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button className="clear-search" onClick={() => setSearchTerm("")}>
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="error-message">
+            <span className="error-icon">⚠</span>
+            <span>{error}</span>
+            <button className="error-dismiss" onClick={() => setError(null)}>
+              ✕
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Status Filter Tabs */}
-      <div className="status-tabs">
+      {/* Status Tabs */}
+      <div className="status-tabs-container">
         {["all", "approved", "pending", "rejected"].map((status) => (
           <button
             key={status}
-            data-status={status}
             className={`status-tab ${selectedStatus === status ? "active" : ""}`}
             onClick={() => setSelectedStatus(status)}
           >
-            {status === "all" && "📋 All Services"}
-            {status === "approved" && "✅ Approved"}
-            {status === "pending" && "⏳ Pending"}
-            {status === "rejected" && "❌ Rejected"}
+            <div className="tab-content">
+              <span className="tab-icon">
+                {status === "all" && "🛠"}
+                {status === "approved" && "✅"}
+                {status === "pending" && "⏳"}
+                {status === "rejected" && "❌"}
+              </span>
+              <span className="tab-text">{status.charAt(0).toUpperCase() + status.slice(1)}</span>
+              <span className="tab-count">{statusStats[status]}</span>
+            </div>
           </button>
         ))}
       </div>
 
-      {/* NEW: LIFO/FIFO Sort Buttons */}
-      <div className="sort-container" style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
-        <button
-          className={`sort-btn ${sortOrder === "lifo" ? "active" : ""}`}
-          onClick={() => setSortOrder("lifo")}
-          style={{
-            padding: "8px 16px",
-            borderRadius: "4px",
-            border: "1px solid #ddd",
-            backgroundColor: sortOrder === "lifo" ? "#007bff" : "#f9f9f9",
-            color: sortOrder === "lifo" ? "white" : "#333",
-            cursor: "pointer",
-            fontWeight: sortOrder === "lifo" ? "600" : "400",
-          }}
-        >
-          📥 LIFO (Latest First)
-        </button>
-        <button
-          className={`sort-btn ${sortOrder === "fifo" ? "active" : ""}`}
-          onClick={() => setSortOrder("fifo")}
-          style={{
-            padding: "8px 16px",
-            borderRadius: "4px",
-            border: "1px solid #ddd",
-            backgroundColor: sortOrder === "fifo" ? "#007bff" : "#f9f9f9",
-            color: sortOrder === "fifo" ? "white" : "#333",
-            cursor: "pointer",
-            fontWeight: sortOrder === "fifo" ? "600" : "400",
-          }}
-        >
-          📤 FIFO (Oldest First)
-        </button>
+      {/* Sort Order Buttons */}
+      <div className="sort-order-container">
+        <div className="sort-order-buttons">
+          <button
+            className={`sort-order-btn ${sortOrder === "lifo" ? "active" : ""}`}
+            onClick={() => setSortOrder("lifo")}
+          >
+            <span className="sort-order-icon">📥</span>
+            <span className="sort-order-text">LIFO (Latest First)</span>
+          </button>
+          <button
+            className={`sort-order-btn ${sortOrder === "fifo" ? "active" : ""}`}
+            onClick={() => setSortOrder("fifo")}
+          >
+            <span className="sort-order-icon">📤</span>
+            <span className="sort-order-text">FIFO (Oldest First)</span>
+          </button>
+        </div>
       </div>
 
-      {sortedServices.length === 0 ? (
-        <p className="no-data">
-          {selectedStatus === "all" && searchTerm === ""
-            ? "No services found."
-            : searchTerm !== ""
-            ? `No services matching "${searchTerm}" found.`
-            : `No ${selectedStatus} services found.`}
-        </p>
-      ) : (
-        <div className="service-grid">
-          {sortedServices.map((s) => (
-            <div key={s.serviceId} className="service-card">
-              {/* Status badge */}
-              <span className={`service-status-badge ${statusColor(s.status)}`}>
-                {s.status.toUpperCase()}
-              </span>
+      {/* Data Table with Horizontal Scroll */}
+      <div className={`table-wrapper ${scrolled ? "scrolled" : ""}`}>
+        {loading ? (
+          <div className="loading-spinner">
+            <div className="spinner"></div>
+            <p>Loading services data...</p>
+          </div>
+        ) : filteredServices.length === 0 ? (
+          <div className="no-data-message">
+            <div className="no-data-icon">📭</div>
+            <p>No services found</p>
+            {searchTerm && <p className="no-data-hint">Try adjusting your search criteria</p>}
+            <button className="no-data-action" onClick={() => {setSearchTerm(""); setSelectedStatus("all");}}>
+              Clear filters
+            </button>
+          </div>
+        ) : (
+          <div className="table-scroll-container" ref={tableRef} onScroll={handleTableScroll}>
+            <table className="services-table">
+              <thead>
+                <tr>
+                  <th className="sticky-col sticky-col-id">
+                    <div className="th-content">
+                      Service ID
+                    </div>
+                  </th>
 
-              {/* Image */}
-              <img
-                src={s.image || "https://via.placeholder.com/300x200?text=No+Image"}
-                alt={s.name}
-                className="service-img"
-              />
+                  <th className="sticky-col sticky-col-seller-id">
+                    <div className="th-content">
+                      Seller Details
+                    </div>
+                  </th>
 
-              <h3>{s.name}</h3>
-              <p className="specific-drone"><strong>Specific Drone:</strong> {s.specificDrone}</p>
-              <p className="experience"><strong>Experience:</strong> {s.experience} years</p>
-              <p className="location"><strong>Location:</strong> {s.location}</p>
-              <p className="price"><strong>Price:</strong> ₹{s.price}</p>
+                  <th onClick={() => handleSort("name")}>
+                    <div className="th-content">
+                      Service Details <SortIcon column="name" />
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort("experience")}>
+                    <div className="th-content">
+                      Experience <SortIcon column="experience" />
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort("price")}>
+                    <div className="th-content">
+                      Price <SortIcon column="price" />
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort("status")}>
+                    <div className="th-content">
+                      Status <SortIcon column="status" />
+                    </div>
+                  </th>
+                  <th>
+                    <div className="th-content">
+                      Description
+                    </div>
+                  </th>
+                  <th>
+                    <div className="th-content">
+                      Actions
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  // Group filtered services by seller
+                  const sellerGroups = filteredServices.reduce((acc, service) => {
+                    if (!acc[service.sellerId]) {
+                      acc[service.sellerId] = [];
+                    }
+                    acc[service.sellerId].push(service);
+                    return acc;
+                  }, {});
 
-              {s.description && (
-                <p className="desc"><strong>Description:</strong> {s.description}</p>
-              )}
+                  // Convert to array and render
+                  return Object.entries(sellerGroups).flatMap(([sellerId, sellerServices]) => {
+                    if (sellerServices.length === 0) return [];
 
-              <div className="status-actions">
-                {s.status === "approved" && (
-                  <>
-                    <button
-                      className="status-btn reject"
-                      onClick={() => updateServiceStatus(s.serviceId, "rejected")}
-                      disabled={isUpdating(s.serviceId, "rejected")}
-                    >
-                      {isUpdating(s.serviceId, "rejected") ? "Updating..." : "Reject"}
-                    </button>
-                    <button
-                      className="status-btn pending"
-                      onClick={() => updateServiceStatus(s.serviceId, "pending")}
-                      disabled={isUpdating(s.serviceId, "pending")}
-                    >
-                      {isUpdating(s.serviceId, "pending") ? "Updating..." : "Move to Pending"}
-                    </button>
-                    <button
-                      className="status-btn delete"
-                      onClick={() => deleteService(s.serviceId)}
-                      disabled={isUpdating(s.serviceId, "deleting")}
-                      style={{ backgroundColor: "#dc3545", color: "white" }}
-                    >
-                      {isUpdating(s.serviceId, "deleting") ? "Deleting..." : "🗑 Delete"}
-                    </button>
-                  </>
+                    const isExpanded = expandedSellers.has(sellerId);
+                    const hasMultipleServices = sellerServices.length > 1;
+
+                    return [
+                      hasMultipleServices ? (
+                        <tr
+                          key={`header-${sellerId}`}
+                          className="seller-header-row"
+                          onClick={() => toggleSeller(sellerId)}
+                        >
+                          <td colSpan="8" className="seller-header-cell">
+                            <div className="seller-header-content">
+                              <span className="expand-icon">
+                                {isExpanded ? "▼" : "▶"}
+                              </span>
+                              <span className="seller-id">{sellerId}</span>
+                              <span className="service-count">{sellerServices.length} services</span>
+                              <div className="seller-info">
+                                {sellerServices[0].sellerInfo?.email && (
+                                  <span className="info-item email">📧 {sellerServices[0].sellerInfo.email}</span>
+                                )}
+                                {sellerServices[0].sellerInfo?.phoneNumber && (
+                                  <span className="info-item phone">📱 {sellerServices[0].sellerInfo.phoneNumber}</span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null,
+                      ...(!hasMultipleServices || isExpanded
+                        ? sellerServices.map((service) => (
+                            <ServiceRow
+                              key={service.serviceId}
+                              service={service}
+                              isSubRow={hasMultipleServices}
+                            />
+                          ))
+                        : [])
+                    ];
+                  });
+                })()}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Footer Stats */}
+      <div className="footer-stats">
+        <div className="stat-card">
+          <div className="stat-icon">🛠</div>
+          <div className="stat-content">
+            <div className="stat-label">Total Services</div>
+            <div className="stat-value">{services.length}</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">✅</div>
+          <div className="stat-content">
+            <div className="stat-label">Approved</div>
+            <div className="stat-value">{statusStats.approved}</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">⏳</div>
+          <div className="stat-content">
+            <div className="stat-label">Pending</div>
+            <div className="stat-value">{statusStats.pending}</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">❌</div>
+          <div className="stat-content">
+            <div className="stat-label">Rejected</div>
+            <div className="stat-value">{statusStats.rejected}</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">💰</div>
+          <div className="stat-content">
+            <div className="stat-label">Total Value</div>
+            <div className="stat-value">
+              ₹{services.reduce((sum, s) => sum + s.price, 0).toLocaleString('en-IN')}
+            </div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">📊</div>
+          <div className="stat-content">
+            <div className="stat-label">Avg Experience</div>
+            <div className="stat-value">
+              {services.length > 0 
+                ? (services.reduce((sum, s) => sum + s.experience, 0) / services.length).toFixed(1) + " yrs"
+                : "0 yrs"}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Service Details Modal */}
+      {viewingService && (
+        <div className="service-modal-overlay" onClick={closeServiceDetails}>
+          <div className="service-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Service Details</h2>
+              <button className="modal-close" onClick={closeServiceDetails}>
+                ✕
+              </button>
+            </div>
+            <div className="modal-content">
+              <div className="modal-profile">
+                {viewingService.image && (
+                  <img
+                    src={viewingService.image}
+                    alt={viewingService.name}
+                    className="modal-service-image"
+                  />
                 )}
-
-                {s.status === "pending" && (
-                  <>
-                    <button
-                      className="status-btn approve"
-                      onClick={() => updateServiceStatus(s.serviceId, "approved")}
-                      disabled={isUpdating(s.serviceId, "approved")}
-                    >
-                      {isUpdating(s.serviceId, "approved") ? "Updating..." : "Approve"}
-                    </button>
-                    <button
-                      className="status-btn reject"
-                      onClick={() => updateServiceStatus(s.serviceId, "rejected")}
-                      disabled={isUpdating(s.serviceId, "rejected")}
-                    >
-                      {isUpdating(s.serviceId, "rejected") ? "Updating..." : "Reject"}
-                    </button>
-                    <button
-                      className="status-btn delete"
-                      onClick={() => deleteService(s.serviceId)}
-                      disabled={isUpdating(s.serviceId, "deleting")}
-                      style={{ backgroundColor: "#dc3545", color: "white" }}
-                    >
-                      {isUpdating(s.serviceId, "deleting") ? "Deleting..." : "🗑 Delete"}
-                    </button>
-                  </>
-                )}
-
-                {s.status === "rejected" && (
-                  <>
-                    <button
-                      className="status-btn pending"
-                      onClick={() => updateServiceStatus(s.serviceId, "pending")}
-                      disabled={isUpdating(s.serviceId, "pending")}
-                    >
-                      {isUpdating(s.serviceId, "pending") ? "Updating..." : "Move to Pending"}
-                    </button>
-                    <button
-                      className="status-btn approve"
-                      onClick={() => updateServiceStatus(s.serviceId, "approved")}
-                      disabled={isUpdating(s.serviceId, "approved")}
-                    >
-                      {isUpdating(s.serviceId, "approved") ? "Updating..." : "Approve"}
-                    </button>
-                    <button
-                      className="status-btn delete"
-                      onClick={() => deleteService(s.serviceId)}
-                      disabled={isUpdating(s.serviceId, "deleting")}
-                      style={{ backgroundColor: "#dc3545", color: "white" }}
-                    >
-                      {isUpdating(s.serviceId, "deleting") ? "Deleting..." : "🗑 Delete"}
-                    </button>
-                  </>
-                )}
+                <div className="modal-name">
+                  <h3>{viewingService.name}</h3>
+                  <span className={`modal-status status-${viewingService.status}`}>
+                    {viewingService.status.toUpperCase()}
+                  </span>
+                </div>
               </div>
+              <div className="modal-details-grid">
+                <div className="detail-section">
+                  <h4>Service Information</h4>
+                  <div className="detail-row">
+                    <span className="detail-label">Service ID:</span>
+                    <span className="detail-value">{viewingService.serviceId}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Specific Drone:</span>
+                    <span className="detail-value">{viewingService.specificDrone}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Experience:</span>
+                    <span className="detail-value">{viewingService.experience} years</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Location:</span>
+                    <span className="detail-value">{viewingService.location}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Price:</span>
+                    <span className="detail-value">₹{viewingService.price.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Status:</span>
+                    <span className={`detail-value status-badge status-${viewingService.status}`}>
+                      {viewingService.status.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
 
-              <div className="seller-box">
-                <h4>Seller Info</h4>
-                {s.sellerInfo ? (
-                  <>
-                    <p><strong>Seller ID:</strong> {s.sellerId}</p>
-                    <p><strong>Email:</strong> {s.sellerInfo.email}</p>
-                    <p><strong>Phone:</strong> {s.sellerInfo.phoneNumber}</p>
-                  </>
-                ) : (
-                  <p className="no-seller">Seller not found</p>
+                <div className="detail-section">
+                  <h4>Description</h4>
+                  <div className="detail-row full-width">
+                    <span className="detail-value description-full">
+                      {viewingService.description || "No description available"}
+                    </span>
+                  </div>
+                </div>
+
+                {viewingService.sellerInfo && (
+                  <div className="detail-section seller-section">
+                    <h4>Seller Information</h4>
+                    <div className="detail-row">
+                      <span className="detail-label">Seller ID:</span>
+                      <span className="detail-value">{viewingService.sellerId}</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Seller Email:</span>
+                      <span className="detail-value">{viewingService.sellerInfo.email}</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Seller Phone:</span>
+                      <span className="detail-value">{viewingService.sellerInfo.phoneNumber}</span>
+                    </div>
+                  </div>
                 )}
-              </div>
-
-              <div className="meta-box">
-                <h4>Meta</h4>
-                <p className="service-id"><strong>Service ID:</strong> {s.serviceId}</p>
-                <p><strong>Created:</strong> {new Date(s.createdAt).toLocaleString()}</p>
-                <p><strong>Updated:</strong> {new Date(s.updatedAt).toLocaleString()}</p>
               </div>
             </div>
-          ))}
+            <div className="modal-footer">
+              <button className="modal-action-btn" onClick={closeServiceDetails}>
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

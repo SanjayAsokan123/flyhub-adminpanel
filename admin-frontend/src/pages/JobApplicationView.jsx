@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "../styles/JobApplicationView.css";
 
-const GRAPHQL_URL = "https://flyhub-webadmin-4.onrender.com/graphql";
+const GRAPHQL_URL = "http://localhost:5001/graphql";
 
 export default function JobApplicationsList() {
   const [applications, setApplications] = useState([]);

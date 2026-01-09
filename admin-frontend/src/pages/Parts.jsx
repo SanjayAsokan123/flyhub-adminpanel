@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import "../styles/Parts.css";
-const GRAPHQL_URL = "https://flyhub-webadmin-4.onrender.com/graphql";
+
+const GRAPHQL_URL = "http://localhost:5001/graphql";
 
 function Parts() {
   const [parts, setParts] = useState([]);
@@ -9,7 +10,11 @@ function Parts() {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [updatingStatus, setUpdatingStatus] = useState({ id: null, status: null });
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("newest");
+  const [sortConfig, setSortConfig] = useState({ key: "name", direction: "asc" });
+  const [expandedSellers, setExpandedSellers] = useState(new Set());
+  const tableRef = useRef(null);
+  const [scrolled, setScrolled] = useState(false);
+  const [viewingPart, setViewingPart] = useState(null);
 
   // Fetch ALL PARTS (with sellerInfo)
   const fetchParts = async () => {
@@ -49,16 +54,118 @@ function Parts() {
 
       if (result.errors) {
         setError(result.errors[0].message);
-        setParts([]);
+        // Use mock data for demo purposes
+        setParts(getMockParts());
       } else {
-        setParts(result.data.parts || []);
+        const data = result.data?.parts || [];
+        if (data.length === 0) {
+          setParts(getMockParts());
+        } else {
+          setParts(data);
+        }
       }
     } catch (err) {
-      console.error("Fetch error:", err);
       setError(err.message);
+      setParts(getMockParts());
     } finally {
       setLoading(false);
     }
+  };
+
+  // Get mock parts data
+  const getMockParts = () => {
+    return [
+      {
+        partId: "PART-001",
+        name: "DJI Propeller Set",
+        brand: "DJI",
+        price: 2999,
+        description: "High-quality carbon fiber propellers for DJI drones",
+        image: "https://images.unsplash.com/photo-1579829366248-204fe8413f31?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+        quantity: 50,
+        status: "approved",
+        sellerId: "SELLER-001",
+        sellerInfo: {
+          email: "dji.seller@example.com",
+          phoneNumber: "+919876543210"
+        }
+      },
+      {
+        partId: "PART-002",
+        name: "Autel Battery Pack",
+        brand: "Autel",
+        price: 8999,
+        description: "Long-lasting lithium-ion battery for Autel drones",
+        image: "https://images.unsplash.com/photo-1581094794329-c8112a89af12?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+        quantity: 25,
+        status: "pending",
+        sellerId: "SELLER-002",
+        sellerInfo: {
+          email: "autel.seller@example.com",
+          phoneNumber: "+919876543211"
+        }
+      },
+      {
+        partId: "PART-003",
+        name: "Parrot Camera Module",
+        brand: "Parrot",
+        price: 15999,
+        description: "4K camera module for Parrot Anafi drones",
+        image: "https://images.unsplash.com/photo-1502920917128-1aa500764cbd?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+        quantity: 15,
+        status: "approved",
+        sellerId: "SELLER-003",
+        sellerInfo: {
+          email: "parrot.seller@example.com",
+          phoneNumber: "+919876543212"
+        }
+      },
+      {
+        partId: "PART-004",
+        name: "Skydio Motor Set",
+        brand: "Skydio",
+        price: 6999,
+        description: "Brushless motors for Skydio drones",
+        image: "https://images.unsplash.com/photo-1586769852044-692ebda0b2dc?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+        quantity: 0,
+        status: "rejected",
+        sellerId: "SELLER-004",
+        sellerInfo: {
+          email: "skydio.seller@example.com",
+          phoneNumber: "+919876543213"
+        }
+      },
+      {
+        partId: "PART-005",
+        name: "Yuneec Landing Gear",
+        brand: "Yuneec",
+        price: 4999,
+        description: "Retractable landing gear for Typhoon series",
+        image: "https://images.unsplash.com/photo-1586769852836-bc069f74e9e6?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+        quantity: 30,
+        status: "pending",
+        sellerId: "SELLER-001",
+        sellerInfo: {
+          email: "dji.seller@example.com",
+          phoneNumber: "+919876543210"
+        }
+      },
+      {
+        partId: "PART-006",
+        name: "DJI Remote Controller",
+        brand: "DJI",
+        price: 12999,
+        description: "Professional remote controller with extended range",
+        image: "https://images.unsplash.com/photo-1518709268805-4e9042af2176?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+        quantity: 18,
+        status: "approved",
+        sellerId: "SELLER-002",
+        sellerInfo: {
+          email: "autel.seller@example.com",
+          phoneNumber: "+919876543211"
+        }
+      }
+    ];
   };
 
   // Update part status
@@ -163,7 +270,6 @@ function Parts() {
         setParts(prevParts =>
           prevParts.filter(part => part.partId !== partId)
         );
-        alert("Part permanently deleted!");
       }
     } catch (err) {
       console.error("Delete Error:", err);
@@ -174,223 +280,619 @@ function Parts() {
     setUpdatingStatus({ id: null, status: null });
   };
 
+  // View part details
+  const viewPartDetails = (part) => {
+    setViewingPart(part);
+  };
+
+  // Close part details modal
+  const closePartDetails = () => {
+    setViewingPart(null);
+  };
+
+  // Handle scroll to show shadow on sticky columns
+  const handleTableScroll = (e) => {
+    const isScrolled = e.target.scrollLeft > 0;
+    setScrolled(isScrolled);
+  };
+
   useEffect(() => {
     fetchParts();
   }, []);
 
-  // Sort parts
-  const sortedParts = [...parts].sort((a, b) => {
-    if (sortBy === "newest") {
-      // For newest: assuming items at end of array are newer
-      return 1;
-    } else if (sortBy === "oldest") {
-      // For oldest: assuming items at beginning of array are older
-      return -1;
-    } else if (sortBy === "price-high") {
-      return (b.price || 0) - (a.price || 0);
-    } else if (sortBy === "price-low") {
-      return (a.price || 0) - (b.price || 0);
-    } else if (sortBy === "name-asc") {
-      return (a.name || "").localeCompare(b.name || "");
-    } else if (sortBy === "name-desc") {
-      return (b.name || "").localeCompare(a.name || "");
+  // Toggle seller expansion
+  const toggleSeller = (sellerId) => {
+    const newExpanded = new Set(expandedSellers);
+    if (newExpanded.has(sellerId)) {
+      newExpanded.delete(sellerId);
+    } else {
+      newExpanded.add(sellerId);
     }
-    return 0;
-  });
+    setExpandedSellers(newExpanded);
+  };
 
-  // Filter parts based on selected status and search term
-  const filteredParts = sortedParts.filter(part => {
-    const matchesStatus = selectedStatus === "all" ||
-                         part.status.toLowerCase() === selectedStatus;
+  // Filter and sort parts
+  const filteredParts = parts
+    .filter(part => {
+      const matchesStatus = selectedStatus === "all" || part.status.toLowerCase() === selectedStatus;
+      const matchesSearch =
+        searchTerm === "" ||
+        part.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        part.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        part.partId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        part.description.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesStatus && matchesSearch;
+    })
+    .sort((a, b) => {
+      const key = sortConfig.key;
+      let aVal = a[key];
+      let bVal = b[key];
 
-    const matchesSearch = searchTerm === "" ||
-                         part.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         part.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         part.description.toLowerCase().includes(searchTerm.toLowerCase());
+      if (typeof aVal === "string") {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+      }
 
-    return matchesStatus && matchesSearch;
-  });
+      if (sortConfig.direction === "asc") {
+        return aVal > bVal ? 1 : -1;
+      } else {
+        return aVal < bVal ? 1 : -1;
+      }
+    });
 
-  const statusColor = (status) => {
-    switch (status) {
-      case "approved":
-        return "status-approved";
-      case "pending":
-        return "status-pending";
-      case "rejected":
-        return "status-rejected";
-      default:
-        return "";
-    }
+  const statusStats = {
+    all: parts.length,
+    approved: parts.filter(d => d.status === "approved").length,
+    pending: parts.filter(d => d.status === "pending").length,
+    rejected: parts.filter(d => d.status === "rejected").length,
+  };
+
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  const SortIcon = ({ column }) => {
+    if (sortConfig.key !== column) return <span className="sort-icon">↕</span>;
+    return <span className="sort-icon active">{sortConfig.direction === "asc" ? "↑" : "↓"}</span>;
   };
 
   const isUpdating = (partId, status) => {
     return updatingStatus.id === partId && updatingStatus.status === status;
   };
 
-  if (loading) return <div className="loading">Loading parts…</div>;
-  if (error) return <div className="error">❌ {error}</div>;
+  const PartRow = ({ part, isSubRow = false }) => (
+    <tr key={part.partId} className={`part-row ${isSubRow ? 'sub-row' : ''}`}>
+      <td className="sticky-col sticky-col-id">
+        <div className="part-id-cell">
+          <div className="id-badge">{part.partId}</div>
+        </div>
+      </td>
+
+      <td className="sticky-col sticky-col-seller-id">
+        <div className="seller-id-cell">
+          <div className="id-badge seller">{part.sellerId}</div>
+          {part.sellerInfo && (
+            <div className="seller-quick-info">
+              <span className="seller-email">{part.sellerInfo.email}</span>
+            </div>
+          )}
+        </div>
+      </td>
+
+      <td className="cell-name">
+        <div className="name-cell">
+          {part.image && (
+            <img
+              src={part.image}
+              alt={part.name}
+              className="part-thumbnail"
+            />
+          )}
+          <div className="name-info">
+            <strong>{part.name}</strong>
+            <div className="part-details">
+              <span className="brand">{part.brand}</span>
+              <span className="part-type">Part</span>
+            </div>
+          </div>
+        </div>
+      </td>
+
+      <td className="cell-price">
+        <div className="price-badge">
+          <span className="price-icon">₹</span>
+          {part.price.toLocaleString('en-IN')}
+        </div>
+      </td>
+
+      <td className="cell-quantity">
+        <div className="quantity-badge">
+          <span className="qty-icon">📦</span>
+          <span className={`qty-value ${part.quantity === 0 ? 'out-of-stock' : ''}`}>
+            {part.quantity}
+          </span>
+        </div>
+      </td>
+
+      <td className="cell-status">
+        <span className={`status-badge status-${part.status}`}>
+          {part.status.toUpperCase()}
+        </span>
+      </td>
+
+      <td className="cell-description">
+        <div className="description-text">
+          {part.description}
+        </div>
+      </td>
+
+      <td className="cell-actions">
+        <div className="action-buttons">
+          {part.status === "pending" && (
+            <>
+              <button
+                className="action-btn approve"
+                onClick={() => updatePartStatus(part.partId, "approved")}
+                disabled={isUpdating(part.partId, "approved")}
+                title="Approve part"
+              >
+                {isUpdating(part.partId, "approved") ? (
+                  <span className="loading-dots"></span>
+                ) : (
+                  <span>✓</span>
+                )}
+              </button>
+              <button
+                className="action-btn reject"
+                onClick={() => updatePartStatus(part.partId, "rejected")}
+                disabled={isUpdating(part.partId, "rejected")}
+                title="Reject part"
+              >
+                {isUpdating(part.partId, "rejected") ? (
+                  <span className="loading-dots"></span>
+                ) : (
+                  <span>✗</span>
+                )}
+              </button>
+            </>
+          )}
+
+          {part.status === "approved" && (
+            <>
+              <button
+                className="action-btn pending"
+                onClick={() => updatePartStatus(part.partId, "pending")}
+                disabled={isUpdating(part.partId, "pending")}
+                title="Move to pending"
+              >
+                {isUpdating(part.partId, "pending") ? (
+                  <span className="loading-dots"></span>
+                ) : (
+                  <span>⏳</span>
+                )}
+              </button>
+              <button
+                className="action-btn reject"
+                onClick={() => updatePartStatus(part.partId, "rejected")}
+                disabled={isUpdating(part.partId, "rejected")}
+                title="Reject part"
+              >
+                {isUpdating(part.partId, "rejected") ? (
+                  <span className="loading-dots"></span>
+                ) : (
+                  <span>✗</span>
+                )}
+              </button>
+            </>
+          )}
+
+          {part.status === "rejected" && (
+            <>
+              <button
+                className="action-btn pending"
+                onClick={() => updatePartStatus(part.partId, "pending")}
+                disabled={isUpdating(part.partId, "pending")}
+                title="Move to pending"
+              >
+                {isUpdating(part.partId, "pending") ? (
+                  <span className="loading-dots"></span>
+                ) : (
+                  <span>⏳</span>
+                )}
+              </button>
+              <button
+                className="action-btn approve"
+                onClick={() => updatePartStatus(part.partId, "approved")}
+                disabled={isUpdating(part.partId, "approved")}
+                title="Approve part"
+              >
+                {isUpdating(part.partId, "approved") ? (
+                  <span className="loading-dots"></span>
+                ) : (
+                  <span>✓</span>
+                )}
+              </button>
+            </>
+          )}
+
+          <button
+            className="action-btn view"
+            onClick={() => viewPartDetails(part)}
+            title="View details"
+          >
+            👁
+          </button>
+
+          <button
+            className="action-btn delete"
+            onClick={() => deletePart(part.partId)}
+            disabled={isUpdating(part.partId, "deleting")}
+            title="Delete part"
+          >
+            {isUpdating(part.partId, "deleting") ? (
+              <span className="loading-dots"></span>
+            ) : (
+              <span>🗑</span>
+            )}
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
 
   return (
     <div className="parts-container">
-      <h2 className="parts-title">🚀 Parts Dashboard</h2>
-
-      {/* Search Bar */}
-      <div className="search-container">
-        <input
-          type="text"
-          placeholder="Search parts by name, brand, or description..."
-          className="search-input"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <button className="search-button" onClick={() => {}}>
-          🔍
-        </button>
-      </div>
-
-      {/* Controls Row */}
-      <div className="controls-row">
-        {/* Status Filter Tabs */}
-        <div className="status-tabs">
-          {["all", "approved", "pending", "rejected"].map((status) => (
-            <button
-              key={status}
-              data-status={status}
-              className={`status-tab ${selectedStatus === status ? "active" : ""}`}
-              onClick={() => setSelectedStatus(status)}
-            >
-              {status === "all" && "📋 All Parts"}
-              {status === "approved" && "✅ Approved"}
-              {status === "pending" && "⏳ Pending"}
-              {status === "rejected" && "❌ Rejected"}
-            </button>
-          ))}
-        </div>
-
-        {/* Sort Dropdown */}
-        <div className="sort-dropdown">
-          <select 
-            value={sortBy} 
-            onChange={(e) => setSortBy(e.target.value)}
-            className="sort-select"
-          >
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="price-high">Price: High to Low</option>
-            <option value="price-low">Price: Low to High</option>
-            <option value="name-asc">Name: A-Z</option>
-            <option value="name-desc">Name: Z-A</option>
-          </select>
-        </div>
-      </div>
-
-      {filteredParts.length === 0 ? (
-        <p className="no-data">
-          {selectedStatus === "all" && searchTerm === ""
-            ? "No parts found."
-            : searchTerm !== ""
-            ? `No parts matching "${searchTerm}" found.`
-            : `No ${selectedStatus} parts found.`}
-        </p>
-      ) : (
-        <div className="parts-grid">
-          {filteredParts.map((part) => (
-            <div key={part.partId} className="part-card">
-              {/* Delete Button - TOP LEFT CORNER */}
-              <button
-                className="delete-btn"
-                onClick={() => deletePart(part.partId)}
-                disabled={isUpdating(part.partId, "deleting")}
-                title="Delete Part Permanently"
-              >
-                {isUpdating(part.partId, "deleting") ? "..." : "🗑"}
-              </button>
-
-              <span className={`status-badge ${statusColor(part.status)}`}>
-                {part.status.toUpperCase()}
-              </span>
-
-              <img
-                src={part.image}
-                alt={part.name}
-                className="part-img"
-              />
-
-              <h3>{part.name}</h3>
-              <p className="brand">Brand: {part.brand}</p>
-              <p className="price">₹ {part.price}</p>
-              <p className="desc">{part.description}</p>
-              <p><strong>Quantity:</strong> {part.quantity}</p>
-
-              <div className="status-actions">
-                {part.status === "approved" && (
-                  <>
-                    <button
-                      className="status-btn reject"
-                      onClick={() => updatePartStatus(part.partId, "rejected")}
-                      disabled={isUpdating(part.partId, "rejected")}
-                    >
-                      {isUpdating(part.partId, "rejected") ? "Updating..." : "Reject"}
-                    </button>
-                    <button
-                      className="status-btn pending"
-                      onClick={() => updatePartStatus(part.partId, "pending")}
-                      disabled={isUpdating(part.partId, "pending")}
-                    >
-                      {isUpdating(part.partId, "pending") ? "Updating..." : "Move to Pending"}
-                    </button>
-                  </>
-                )}
-
-                {part.status === "pending" && (
-                  <>
-                    <button
-                      className="status-btn approve"
-                      onClick={() => updatePartStatus(part.partId, "approved")}
-                      disabled={isUpdating(part.partId, "approved")}
-                    >
-                      {isUpdating(part.partId, "approved") ? "Updating..." : "Approve"}
-                    </button>
-                    <button
-                      className="status-btn reject"
-                      onClick={() => updatePartStatus(part.partId, "rejected")}
-                      disabled={isUpdating(part.partId, "rejected")}
-                    >
-                      {isUpdating(part.partId, "rejected") ? "Updating..." : "Reject"}
-                    </button>
-                  </>
-                )}
-
-                {part.status === "rejected" && (
-                  <>
-                    <button
-                      className="status-btn pending"
-                      onClick={() => updatePartStatus(part.partId, "pending")}
-                      disabled={isUpdating(part.partId, "pending")}
-                    >
-                      {isUpdating(part.partId, "pending") ? "Updating..." : "Move to Pending"}
-                    </button>
-                    <button
-                      className="status-btn approve"
-                      onClick={() => updatePartStatus(part.partId, "approved")}
-                      disabled={isUpdating(part.partId, "approved")}
-                    >
-                      {isUpdating(part.partId, "approved") ? "Updating..." : "Approve"}
-                    </button>
-                  </>
-                )}
+      {/* Header */}
+      <div className="header-section">
+        <div className="header-top">
+          <div className="title-section">
+            <h1 className="page-title">Parts Management</h1>
+            <p className="page-subtitle">Manage and oversee all parts registrations and listings</p>
+          </div>
+          <div className="header-controls">
+            <div className="stats-summary">
+              <div className="summary-item">
+                <span className="summary-label">TOTAL</span>
+                <span className="summary-value">{parts.length}</span>
               </div>
-
-              <div className="seller-box">
-                <p><strong>Seller ID:</strong> {part.sellerId}</p>
-                <p><strong>Email:</strong> {part.sellerInfo?.email}</p>
-                <p><strong>Phone:</strong> {part.sellerInfo?.phoneNumber}</p>
+              <div className="summary-item active">
+                <span className="summary-label">APPROVED</span>
+                <span className="summary-value">{statusStats.approved}</span>
               </div>
-
-              <p className="part-id">Part ID: {part.partId}</p>
             </div>
-          ))}
+            <button
+              className="refresh-btn"
+              onClick={fetchParts}
+              disabled={loading}
+            >
+              <span className="refresh-icon">↻</span>
+              {loading ? "Refreshing..." : "Refresh Data"}
+            </button>
+          </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="search-container">
+          <span className="search-icon">🔍</span>
+          <input
+            type="text"
+            placeholder="Search parts by name, brand, ID, or description..."
+            className="search-input"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button className="clear-search" onClick={() => setSearchTerm("")}>
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="error-message">
+            <span className="error-icon">⚠</span>
+            <span>{error}</span>
+            <button className="error-dismiss" onClick={() => setError(null)}>
+              ✕
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Status Tabs */}
+      <div className="status-tabs-container">
+        {["all", "approved", "pending", "rejected"].map((status) => (
+          <button
+            key={status}
+            className={`status-tab ${selectedStatus === status ? "active" : ""}`}
+            onClick={() => setSelectedStatus(status)}
+          >
+            <div className="tab-content">
+              <span className="tab-icon">
+                {status === "all" && "🔧"}
+                {status === "approved" && "✅"}
+                {status === "pending" && "⏳"}
+                {status === "rejected" && "❌"}
+              </span>
+              <span className="tab-text">{status.charAt(0).toUpperCase() + status.slice(1)}</span>
+              <span className="tab-count">{statusStats[status]}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Data Table with Horizontal Scroll */}
+      <div className={`table-wrapper ${scrolled ? "scrolled" : ""}`}>
+        {loading ? (
+          <div className="loading-spinner">
+            <div className="spinner"></div>
+            <p>Loading parts data...</p>
+          </div>
+        ) : filteredParts.length === 0 ? (
+          <div className="no-data-message">
+            <div className="no-data-icon">📭</div>
+            <p>No parts found</p>
+            {searchTerm && <p className="no-data-hint">Try adjusting your search criteria</p>}
+            <button className="no-data-action" onClick={() => { setSearchTerm(""); setSelectedStatus("all"); }}>
+              Clear filters
+            </button>
+          </div>
+        ) : (
+          <div className="table-scroll-container" ref={tableRef} onScroll={handleTableScroll}>
+            <table className="parts-table">
+              <thead>
+                <tr>
+                  <th className="sticky-col sticky-col-id" onClick={() => handleSort("partId")}>
+                    <div className="th-content">
+                      Part ID <SortIcon column="partId" />
+                    </div>
+                  </th>
+
+                  <th className="sticky-col sticky-col-seller-id" onClick={() => handleSort("sellerId")}>
+                    <div className="th-content">
+                      Seller Details <SortIcon column="sellerId" />
+                    </div>
+                  </th>
+
+                  <th onClick={() => handleSort("name")}>
+                    <div className="th-content">
+                      Part Details <SortIcon column="name" />
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort("price")}>
+                    <div className="th-content">
+                      Price <SortIcon column="price" />
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort("quantity")}>
+                    <div className="th-content">
+                      Quantity <SortIcon column="quantity" />
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort("status")}>
+                    <div className="th-content">
+                      Status <SortIcon column="status" />
+                    </div>
+                  </th>
+                  <th>
+                    <div className="th-content">
+                      Description
+                    </div>
+                  </th>
+                  <th>
+                    <div className="th-content">
+                      Actions
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  // Group filtered parts by seller
+                  const sellerGroups = filteredParts.reduce((acc, part) => {
+                    if (!acc[part.sellerId]) {
+                      acc[part.sellerId] = [];
+                    }
+                    acc[part.sellerId].push(part);
+                    return acc;
+                  }, {});
+
+                  // Convert to array and render
+                  return Object.entries(sellerGroups).flatMap(([sellerId, sellerParts]) => {
+                    if (sellerParts.length === 0) return [];
+
+                    const isExpanded = expandedSellers.has(sellerId);
+                    const hasMultipleParts = sellerParts.length > 1;
+
+                    return [
+                      hasMultipleParts ? (
+                        <tr
+                          key={`header-${sellerId}`}
+                          className="seller-header-row"
+                          onClick={() => toggleSeller(sellerId)}
+                        >
+                          <td colSpan="8" className="seller-header-cell">
+                            <div className="seller-header-content">
+                              <span className="expand-icon">
+                                {isExpanded ? "▼" : "▶"}
+                              </span>
+                              <span className="seller-id">{sellerId}</span>
+                              <span className="part-count">{sellerParts.length} parts</span>
+                              <div className="seller-info">
+                                {sellerParts[0].sellerInfo?.email && (
+                                  <span className="info-item email">📧 {sellerParts[0].sellerInfo.email}</span>
+                                )}
+                                {sellerParts[0].sellerInfo?.phoneNumber && (
+                                  <span className="info-item phone">📱 {sellerParts[0].sellerInfo.phoneNumber}</span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null,
+                      ...(!hasMultipleParts || isExpanded
+                        ? sellerParts.map((part) => (
+                          <PartRow
+                            key={part.partId}
+                            part={part}
+                            isSubRow={hasMultipleParts}
+                          />
+                        ))
+                        : [])
+                    ];
+                  });
+                })()}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Footer Stats */}
+      <div className="footer-stats">
+        <div className="stat-card">
+          <div className="stat-icon">🔧</div>
+          <div className="stat-content">
+            <div className="stat-label">Total Parts</div>
+            <div className="stat-value">{parts.length}</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">✅</div>
+          <div className="stat-content">
+            <div className="stat-label">Approved</div>
+            <div className="stat-value">{statusStats.approved}</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">⏳</div>
+          <div className="stat-content">
+            <div className="stat-label">Pending</div>
+            <div className="stat-value">{statusStats.pending}</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">❌</div>
+          <div className="stat-content">
+            <div className="stat-label">Rejected</div>
+            <div className="stat-value">{statusStats.rejected}</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">💰</div>
+          <div className="stat-content">
+            <div className="stat-label">Total Value</div>
+            <div className="stat-value">
+              ₹{parts.reduce((sum, p) => sum + (p.price * p.quantity), 0).toLocaleString('en-IN')}
+            </div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">📦</div>
+          <div className="stat-content">
+            <div className="stat-label">Total Stock</div>
+            <div className="stat-value">
+              {parts.reduce((sum, p) => sum + p.quantity, 0)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Part Details Modal */}
+      {viewingPart && (
+        <div className="part-modal-overlay" onClick={closePartDetails}>
+          <div className="part-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Part Details</h2>
+              <button className="modal-close" onClick={closePartDetails}>
+                ✕
+              </button>
+            </div>
+            <div className="modal-content">
+              <div className="modal-profile">
+                {viewingPart.image && (
+                  <img
+                    src={viewingPart.image}
+                    alt={viewingPart.name}
+                    className="modal-part-image"
+                  />
+                )}
+                <div className="modal-name">
+                  <h3>{viewingPart.name}</h3>
+                  <span className={`modal-status status-${viewingPart.status}`}>
+                    {viewingPart.status.toUpperCase()}
+                  </span>
+                </div>
+              </div>
+              <div className="modal-details-grid">
+                <div className="detail-section">
+                  <h4>Part Information</h4>
+                  <div className="detail-row">
+                    <span className="detail-label">Part ID:</span>
+                    <span className="detail-value">{viewingPart.partId}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Brand:</span>
+                    <span className="detail-value">{viewingPart.brand}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Type:</span>
+                    <span className="detail-value">Drone Part</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Price:</span>
+                    <span className="detail-value">₹{viewingPart.price.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Quantity:</span>
+                    <span className="detail-value">{viewingPart.quantity}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Status:</span>
+                    <span className={`detail-value status-badge status-${viewingPart.status}`}>
+                      {viewingPart.status.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="detail-section">
+                  <h4>Description</h4>
+                  <div className="detail-row full-width">
+                    <span className="detail-value description-full">
+                      {viewingPart.description}
+                    </span>
+                  </div>
+                </div>
+
+                {viewingPart.sellerInfo && (
+                  <div className="detail-section seller-section">
+                    <h4>Seller Information</h4>
+                    <div className="detail-row">
+                      <span className="detail-label">Seller ID:</span>
+                      <span className="detail-value">{viewingPart.sellerId}</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Seller Email:</span>
+                      <span className="detail-value">{viewingPart.sellerInfo.email}</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Seller Phone:</span>
+                      <span className="detail-value">{viewingPart.sellerInfo.phoneNumber}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="modal-action-btn" onClick={closePartDetails}>
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -121,7 +121,7 @@ function BuyersList() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <button className="buyer-search-button" onClick={() => { }}>
+        <button className="buyer-search-button" onClick={() => {}}>
           🔍
         </button>
       </div>
