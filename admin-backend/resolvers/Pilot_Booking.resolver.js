@@ -21,7 +21,7 @@ export const pilotBookingResolvers = {
         query.status = status;
       }
       return await PilotBooking.find(query)
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 });āā
     },
 
 
@@ -252,7 +252,7 @@ export const pilotBookingResolvers = {
           date,
           startTime,
           endTime,
-          pilotType = "seller"
+          pilotType="seller"
         } = input;
 
         console.log("🔍 BookPilot Request Received:", {
