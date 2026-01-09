@@ -21,7 +21,7 @@ export const pilotBookingResolvers = {
         query.status = status;
       }
       return await PilotBooking.find(query)
-        .sort({ createdAt: -1 });āā
+        .sort({ createdAt: -1 });
     },
 
 
