@@ -24,7 +24,7 @@ input PartInput {
   name: String!
   brand: String!
   price: Float!
-  description: String!
+  description: String
   image: String
   quantity: Int
   sellerId: String!
