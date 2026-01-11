@@ -26,6 +26,10 @@ import { GraphQLScalarType, Kind } from "graphql";
 import bodyParser from "body-parser";
 import crypto from "crypto";
 import { Order } from "./models/Order.model.js";
+// pilot drone service Alert status cron job
+import "./cron/Pilot_Alert_status.cron.js";
+import "./cron/Service_Alert_Status.cron.js";
+import "./cron/Drone_rental_Alert_status.cron.js";
 
 dotenv.config();
 
@@ -34,109 +38,109 @@ const PORT = process.env.PORT || 5001;
 const startServer = async () => {
   try {
     const app = express();
-    
-/* =====================================================
-   🔐 RAZORPAY WEBHOOK (RAW BODY REQUIRED)
-   ===================================================== */
-app.post(
-  "/razorpay/webhook",
-  bodyParser.raw({ type: "application/json" }),
-  async (req, res) => {
-    try {
-      const signature = req.headers["x-razorpay-signature"];
 
-      const expected = crypto
-        .createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET)
-        .update(req.body)
-        .digest("hex");
+    /* =====================================================
+       🔐 RAZORPAY WEBHOOK (RAW BODY REQUIRED)
+       ===================================================== */
+    app.post(
+      "/razorpay/webhook",
+      bodyParser.raw({ type: "application/json" }),
+      async (req, res) => {
+        try {
+          const signature = req.headers["x-razorpay-signature"];
 
-      if (signature !== expected) {
-        console.warn("❌ Razorpay webhook signature mismatch");
-        return res.status(400).send("Invalid signature");
-      }
+          const expected = crypto
+            .createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET)
+            .update(req.body)
+            .digest("hex");
 
-      const event = JSON.parse(req.body.toString());
-
-      switch (event.event) {
-        /* ---------- PAYMENT CAPTURED ---------- */
-        case "payment.captured": {
-          const payment = event.payload.payment.entity;
-
-          const order = await Order.findOne({
-            "payment.razorpayOrderId": payment.order_id,
-          });
-
-          if (order && order.payment.status !== "paid") {
-            order.payment.status = "paid";
-            order.payment.transactionId = payment.id;
-            await order.save();
+          if (signature !== expected) {
+            console.warn("❌ Razorpay webhook signature mismatch");
+            return res.status(400).send("Invalid signature");
           }
-          break;
+
+          const event = JSON.parse(req.body.toString());
+
+          switch (event.event) {
+            /* ---------- PAYMENT CAPTURED ---------- */
+            case "payment.captured": {
+              const payment = event.payload.payment.entity;
+
+              const order = await Order.findOne({
+                "payment.razorpayOrderId": payment.order_id,
+              });
+
+              if (order && order.payment.status !== "paid") {
+                order.payment.status = "paid";
+                order.payment.transactionId = payment.id;
+                await order.save();
+              }
+              break;
+            }
+
+            /* ---------- REFUND ---------- */
+            case "refund.processed": {
+              const refund = event.payload.refund.entity;
+
+              const order = await Order.findOne({
+                "payment.transactionId": refund.payment_id,
+              });
+
+              if (order) {
+                order.payment.status = "refunded";
+                order.refund = {
+                  refundId: refund.id,
+                  amount: refund.amount / 100,
+                  status: refund.status,
+                };
+                await order.save();
+              }
+              break;
+            }
+          }
+
+          res.json({ status: "ok" });
+        } catch (err) {
+          console.error("❌ Razorpay webhook error:", err);
+          res.status(500).send("Webhook error");
+        }
+      }
+    );
+    app.use(cors());
+    app.use(express.json());
+
+    const storage = multer.memoryStorage();
+    const upload = multer({ storage });
+
+    app.get("/healthz", (_req, res) => res.json({ ok: true }));
+
+    // ✅ PUBLIC UPLOAD (NO AUTH)
+    app.post("/upload", upload.single("file"), async (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ success: false, message: "No file uploaded" });
         }
 
-        /* ---------- REFUND ---------- */
-        case "refund.processed": {
-          const refund = event.payload.refund.entity;
+        const folder = req.body.folder || "training";
+        const { url, path } = await uploadToFirebase(req.file, folder);
 
-          const order = await Order.findOne({
-            "payment.transactionId": refund.payment_id,
-          });
-
-          if (order) {
-            order.payment.status = "refunded";
-            order.refund = {
-              refundId: refund.id,
-              amount: refund.amount / 100,
-              status: refund.status,
-            };
-            await order.save();
-          }
-          break;
-        }
+        res.json({ success: true, url, path });
+      } catch (err) {
+        console.error("❌ Upload Error:", err);
+        res.status(500).json({ success: false, message: err.message });
       }
+    });
 
-      res.json({ status: "ok" });
-    } catch (err) {
-      console.error("❌ Razorpay webhook error:", err);
-      res.status(500).send("Webhook error");
-    }
-  }
-);
-   app.use(cors());
-app.use(express.json());
+    // ✅ GraphQL upload middleware (must be before auth + Apollo)
+    app.use(graphqlUploadExpress({ maxFileSize: 10_000_000, maxFiles: 10 }));
 
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
+    // 🔒 Protect everything else
+    app.use(verifyFirebaseToken);
 
-app.get("/healthz", (_req, res) => res.json({ ok: true }));
-
-// ✅ PUBLIC UPLOAD (NO AUTH)
-app.post("/upload", upload.single("file"), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: "No file uploaded" });
-    }
-
-    const folder = req.body.folder || "training";
-    const publicUrl = await uploadToFirebase(req.file, folder);
-
-    res.json({ success: true, url: publicUrl });
-  } catch (err) {
-    console.error("❌ Upload Error:", err);
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// ✅ GraphQL upload middleware (must be before auth + Apollo)
-app.use(graphqlUploadExpress({ maxFileSize: 10_000_000, maxFiles: 10 }));
-
-// 🔒 Protect everything else
-app.use(verifyFirebaseToken);
-
-// REST routes
-app.use("/cart", cartRoutes);
-app.use("/wishlist", wishlistRoutes);
-app.use("/auth", sellerAuthRouter);
+    // REST routes
+    app.use("/cart", cartRoutes);
+    app.use("/wishlist", wishlistRoutes);
+    app.use("/auth", sellerAuthRouter);
 
 
     await connectDB();

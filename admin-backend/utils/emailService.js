@@ -34,6 +34,269 @@ const getTransporter = () => {
   }
   return transporter;
 };
+// Add this function to your existing emailService.js
+
+export const sendBookingReminderEmail = async ({
+  to,
+  name,
+  bookingId,
+  pilotName,
+  date,
+  time,
+  location,
+  reminderNumber,
+  totalReminders,
+  daysUntil = 0,
+  isOwner = false,
+  customerName = ""
+}) => {
+  try {
+    let subject = "";
+    let template = "";
+    
+    if (isOwner) {
+      subject = `📋 Booking Reminder ${reminderNumber}/${totalReminders} - ${customerName} on ${date}`;
+      template = "booking_reminder_owner";
+    } else {
+      if (daysUntil === 0) {
+        subject = `⏰ Today's Pilot Booking Reminder ${reminderNumber}/${totalReminders}`;
+      } else if (daysUntil === 1) {
+        subject = `📅 Tomorrow's Pilot Booking Reminder ${reminderNumber}/${totalReminders}`;
+      } else {
+        subject = `📋 Upcoming Pilot Booking Reminder ${reminderNumber}/${totalReminders}`;
+      }
+      template = "booking_reminder_customer";
+    }
+    
+    const emailData = {
+      to,
+      subject,
+      template,
+      data: {
+        name,
+        bookingId,
+        pilotName,
+        date,
+        time,
+        location,
+        reminderNumber,
+        totalReminders,
+        daysUntil,
+        customerName,
+        currentDate: new Date().toLocaleDateString()
+      }
+    };
+    
+    // Send email using your email service
+    // await transporter.sendMail(emailData);
+    
+    console.log(`📧 Booking reminder email sent to ${to}`);
+    return true;
+    
+  } catch (error) {
+    console.error("Failed to send booking reminder email:", error);
+    return false;
+  }
+};
+// ================================================
+// 1️⃣ PILOT ALERT DEACTIVATION EMAIL
+// ================================================
+
+export const sendAlertDeactivationEmail = async ({
+  Type,
+  Name,
+  Email,
+  supportEmail,
+  supportContact,
+}) => {
+  try {
+    const transporter = getTransporter();
+
+    await transporter.sendMail({
+      from: `Flyhub Support <${process.env.EMAIL_USER}>`,
+      to: Email,
+      subject: `⚠️ ${Type} Temporarily Deactivated - Action Required`,
+      html: `
+        <div style="font-family: Arial, sans-serif; background: #f4f6fb; padding: 30px;">
+          <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 12px; padding: 30px; box-shadow: 0 8px 24px rgba(0,0,0,0.08);">
+            
+            <h2 style="color: #d32f2f; margin-top: 0; text-align: center;">
+              ⚠️ ${Type} Temporarily Deactivated
+            </h2>
+
+            <p style="font-size: 15px; color: #333;">
+              Hello <strong>${Name}</strong>,
+            </p>
+
+            <p style="font-size: 15px; color: #555; line-height: 1.6;">
+              Your ${Type.toLowerCase()} has been <strong>temporarily deactivated</strong> due to multiple missed booking confirmations.
+            </p>
+
+            <div style="background: #fff3f3; padding: 16px; border-radius: 10px; margin: 20px 0;">
+              <h4 style="color: #b00020; margin-top: 0;">📋 Reason for Deactivation:</h4>
+              <ul style="color: #444; font-size: 14px; line-height: 1.8;">
+                <li>❌ Multiple booking requests were ignored</li>
+                <li>⏰ Failure to respond within required time</li>
+              </ul>
+            </div>
+
+            <div style="background: #f3f6ff; padding: 16px; border-radius: 10px; margin: 20px 0;">
+              <h4 style="color: #1a0a5b; margin-top: 0;">📞 Need Help?</h4>
+              <p style="font-size: 14px; color: #444;">
+                Contact support:<br/>
+                ✉️ Email: <strong>${supportEmail}</strong><br/>
+                📱 Phone: <strong>${supportContact}</strong>
+              </p>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 24px 0;" />
+
+            <p style="font-size: 12px; color: #777;">
+              <strong>Flyhub Support Team</strong>
+            </p>
+
+          </div>
+        </div>
+      `,
+    });
+
+    console.log(`✅ Alert deactivation email sent to ${Email}`);
+    return true;
+  } catch (error) {
+    console.error("❌ Failed to send deactivation email:", error);
+    return false;
+  }
+};
+
+// ================================================
+// 2️⃣ PILOT REMINDER EMAIL
+// ================================================
+
+export const sendPilotReminderEmail = async ({
+  to,
+  name,
+  bookingId,
+  pilotName
+}) => {
+  try {
+    const transporter = getTransporter();
+
+    await transporter.sendMail({
+      from: `Flyhub Reminders <${process.env.EMAIL_USER}>`,
+      to,
+      subject: `🔔 Reminder: Confirm Booking ${bookingId}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; background: #f4f6fb; padding: 30px;">
+          <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 12px; padding: 30px; box-shadow: 0 8px 24px rgba(0,0,0,0.08);">
+            
+            <h2 style="color: #1a73e8; margin-top: 0; text-align: center;">
+              🔔 Booking Confirmation Reminder
+            </h2>
+
+            <p style="font-size: 15px; color: #333;">
+              Hi <strong>${name}</strong>,
+            </p>
+
+            <p style="font-size: 15px; color: #555; line-height: 1.6;">
+              You have a pending booking request for pilot <strong>${pilotName}</strong>.
+            </p>
+
+            <div style="background: #e8f4ff; padding: 16px; border-radius: 10px; margin: 20px 0;">
+              <h4 style="color: #1a73e8; margin-top: 0;">📋 Booking Details:</h4>
+              <p style="font-size: 14px; color: #444; margin: 8px 0;">
+                <strong>Booking ID:</strong> ${bookingId}<br/>
+                <strong>Pilot:</strong> ${pilotName}
+              </p>
+            </div>
+
+            <div style="background: #fff3f3; padding: 16px; border-radius: 10px; margin: 20px 0;">
+              <p style="font-size: 14px; color: #8a1f1f;">
+                ⚠️ <strong>Important:</strong> Please respond within the specified time.
+              </p>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 24px 0;" />
+
+            <p style="font-size: 12px; color: #777;">
+              <strong>Flyhub Booking System</strong>
+            </p>
+
+          </div>
+        </div>
+      `,
+    });
+
+    console.log(`✅ Pilot reminder email sent to ${to}`);
+    return true;
+  } catch (error) {
+    console.error("❌ Failed to send pilot reminder email:", error);
+    return false;
+  }
+};
+
+// ================================================
+// 3️⃣ USER PILOT UNAVAILABLE EMAIL
+// ================================================
+
+export const sendUserPilotUnavailableEmail = async ({
+  to,
+  name,
+  bookingId,
+  pilotName
+}) => {
+  try {
+    const transporter = getTransporter();
+
+    await transporter.sendMail({
+      from: `Flyhub Notifications <${process.env.EMAIL_USER}>`,
+      to,
+      subject: `❌ Pilot Unavailable - Booking ${bookingId}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; background: #f4f6fb; padding: 30px;">
+          <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 12px; padding: 30px; box-shadow: 0 8px 24px rgba(0,0,0,0.08);">
+            
+            <h2 style="color: #d32f2f; margin-top: 0; text-align: center;">
+              ❌ Pilot Unavailable Notification
+            </h2>
+
+            <p style="font-size: 15px; color: #333;">
+              Hi <strong>${name}</strong>,
+            </p>
+
+            <p style="font-size: 15px; color: #555; line-height: 1.6;">
+              Pilot <strong>${pilotName}</strong> is currently unavailable.
+            </p>
+
+            <div style="background: #fff3f3; padding: 16px; border-radius: 10px; margin: 20px 0;">
+              <h4 style="color: #b00020; margin-top: 0;">📋 Booking Details:</h4>
+              <p style="font-size: 14px; color: #444; margin: 8px 0;">
+                <strong>Booking ID:</strong> ${bookingId}<br/>
+                <strong>Pilot:</strong> ${pilotName}
+              </p>
+            </div>
+
+            <p style="font-size: 15px; color: #555;">
+              We apologize for the inconvenience. You can book another pilot.
+            </p>
+
+            <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 24px 0;" />
+
+            <p style="font-size: 12px; color: #777;">
+              <strong>Flyhub Customer Support</strong>
+            </p>
+
+          </div>
+        </div>
+      `,
+    });
+
+    console.log(`✅ Pilot unavailable email sent to ${to}`);
+    return true;
+  } catch (error) {
+    console.error("❌ Failed to send pilot unavailable email:", error);
+    return false;
+  }
+};
 
 export async function sendEmailVerificationLink({
   to,

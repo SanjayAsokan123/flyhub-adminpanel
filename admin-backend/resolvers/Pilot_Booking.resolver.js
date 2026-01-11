@@ -1,3 +1,4 @@
+// resolvers/pilotBookingResolvers.js
 import { PilotBooking } from "../models/Pilot_Booking.model.js";
 import { HirePilot } from "../models/Hirepilot.model.js";
 import { BuyerPilot } from "../models/BuyerPilot.model.js";
@@ -5,6 +6,28 @@ import { Buyer } from "../models/Buyer.model.js";
 import { Seller } from "../models/Seller.model.js";
 import { sendPushNotification as sendBuyerPush } from "../utils/pushNotification.js";
 import { sendPushNotification as sendSellerPush } from "../utils/SendPushNotification.js";
+import PilotBookingReminder from "../models/Pilot_Alert_status.model.js";
+
+
+// Helper function to calculate pilot reminder times
+function calculatePilotReminderTimes(date, startTime) {
+  const bookingStart = new Date(`${date}T${startTime}:00`);
+  const now = new Date();
+
+  // Final cutoff: 3 hours before rental start
+  const pilotReminderEndAt = new Date(bookingStart);
+  pilotReminderEndAt.setHours(bookingStart.getHours() - 3, 0, 0, 0);
+
+  // If booking is too late, skip reminders
+  if (now >= pilotReminderEndAt) {
+    return { pilotReminderStartAt: null, pilotReminderEndAt };
+  }
+
+  return {
+    pilotReminderStartAt: now,
+    pilotReminderEndAt
+  };
+}
 
 export const pilotBookingResolvers = {
   Query: {
@@ -14,12 +37,15 @@ export const pilotBookingResolvers = {
         $or: [
 
           { sellerId, pilotType: "seller" },
-          { buyerId: sellerId, pilotType: "buyer" },
+
+          { buyerId: sellerId, pilotType: "buyer" }
         ]
       };
+
       if (status && status !== "all") {
         query.status = status;
       }
+
       return await PilotBooking.find(query)
         .sort({ createdAt: -1 });
     },
@@ -252,7 +278,7 @@ export const pilotBookingResolvers = {
           date,
           startTime,
           endTime,
-          pilotType="seller"
+          pilotType = "seller"
         } = input;
 
         console.log("🔍 BookPilot Request Received:", {
@@ -465,6 +491,31 @@ export const pilotBookingResolvers = {
           );
           console.log("📤 Booker notification sent");
         }
+
+
+        // 5️⃣ CREATE REMINDER RECORD (CRITICAL STEP)
+        const { pilotReminderStartAt, pilotReminderEndAt } = calculatePilotReminderTimes(input.date, input.startTime);
+
+
+        await PilotBookingReminder.create({
+          bookingId: booking.bookingId,
+          pilotId: booking.pilotId,
+          BuyerId: booking.buyerId,
+
+          pilotStatus: "ASSIGNED",
+          userStatus: "ACTIVE",
+
+          pilotReminderStartAt,
+          pilotReminderEndAt,
+
+          reminderCount: 0,
+          pilotNotifyCount: 0,
+          pilotType: pilotType,
+          pilotOwnerId: pilotOwnerId,
+          pilotOwnerType: pilotOwnerType
+        });
+
+        console.log(`check 1 : user pilot booked and save in pilot_alert page ${booking.bookingId}`);
 
 
         console.log("🎉 Booking completed successfully!");

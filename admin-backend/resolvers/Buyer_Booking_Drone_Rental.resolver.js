@@ -2,11 +2,39 @@ import DroneRental from "../models/Buyer_Booking_Drone_Rental.model.js";
 import { Rental } from "../models/Rental.model.js";
 import { Seller } from "../models/Seller.model.js";
 import { Buyer } from "../models/Buyer.model.js";
+// Drone Alert schema
+import DroneAlertSchema from "../models/Drone_rental_Alert_status.model.js";
+
 // BUYER notifications
 import { sendPushNotification as sendBuyerPush } from "../utils/pushNotification.js";
 
 // SELLER notifications
 import { sendPushNotification as sendSellerPush } from "../utils/SendPushNotification.js";
+
+// ============================================
+// BUYER BOOKING Time Calculation DRONE RENTAL Resolvers
+// ============================================================
+
+function calculateDroneReminderTimes(rentalDate) {
+  const now = new Date();
+
+  const bookingDay = new Date(rentalDate);
+  bookingDay.setHours(0, 0, 0, 0);
+
+  // Cutoff: previous day 6 PM
+  const deadline = new Date(bookingDay);
+  deadline.setDate(deadline.getDate() - 1);
+  deadline.setHours(18, 0, 0, 0);
+
+  // If booking is too late
+  if (now >= deadline) return null;
+
+  return {
+    ownerReminderStartAt: now,
+    ownerReminderEndAt: deadline,
+    userFallbackAt: deadline,
+  };
+}
 
 
 export const droneRentalBookingResolvers = {
@@ -36,10 +64,9 @@ export const droneRentalBookingResolvers = {
     getConfirmedDroneRentalsByBuyer: async (_, { buyerId }) =>
       DroneRental.find({
         buyerId,
-        status: { $in: ["confirmed", "completed"] },
+        status: "confirmed",
         buyerDeleted: false,
-      }).sort({ createdAt: -1 }),
-
+      }),
 
     getPendingDroneRentalsByBuyer: async (_, { buyerId }) =>
       DroneRental.find({
@@ -65,135 +92,182 @@ export const droneRentalBookingResolvers = {
 
 
   Mutation: {
-    createDroneRental: async (_, { name, phone, location, rentalDate, rentalId, buyerId }) => {
-      try {
-        /* --------------------------------------------------
-          1️⃣ Validate Rental Listing
-        -------------------------------------------------- */
-        const listing = await Rental.findOne({ rentalId });
-        if (!listing) {
-          return { success: false, message: "Invalid rentalId" };
-        }
-        console.log(rentalId);
-        console.log("==============================");
-        console.log(listing);
-        console.log("==============================");
 
+      createDroneRental: async (_,{ name, phone, location, rentalDate, rentalId, buyerId }) => {
+            try {
+      /* --------------------------------------------------
+        1️⃣ Validate Rental Listing
+      -------------------------------------------------- */
+      const listing = await Rental.findOne({ rentalId });
+      if (!listing) {
+        return { success: false, message: "Invalid rentalId" };
+      }
+      console.log(rentalId);
+      console.log("==============================");
+      console.log(listing);
+      console.log("==============================");
+      
+      
+      
+      /* --------------------------------------------------
+        2️⃣ Normalize Date (IGNORE TIME)
+      -------------------------------------------------- */
+      const bookingDate = new Date(rentalDate);
+      bookingDate.setHours(0, 0, 0, 0);
 
+      const nextDate = new Date(bookingDate);
+      nextDate.setDate(nextDate.getDate() + 1);
 
-        /* --------------------------------------------------
-          2️⃣ Normalize Date (IGNORE TIME)
-        -------------------------------------------------- */
-        const bookingDate = new Date(rentalDate);
-        bookingDate.setHours(0, 0, 0, 0);
+      /* --------------------------------------------------
+        3️⃣ Check Already Booked (same drone + same date)
+      -------------------------------------------------- */
+      const alreadyBooked = await DroneRental.findOne({
+        rentalId,
+        buyerId,
+        rentalDate: {
+        $gte: bookingDate,
+        $lt: nextDate,
+      },
+      });
 
-        const nextDate = new Date(bookingDate);
-        nextDate.setDate(nextDate.getDate() + 1);
-
-        /* --------------------------------------------------
-          3️⃣ Check Already Booked (same drone + same date)
-        -------------------------------------------------- */
-        const alreadyBooked = await DroneRental.findOne({
-          rentalId,
-          buyerId,
-          rentalDate: {
-            $gte: bookingDate,
-            $lt: nextDate,
-          },
-        });
-
-        if (alreadyBooked) {
-          return {
-            success: false,
-            message: "You have already booked this service for the selected date",
-          };
-        }
-
-        /* --------------------------------------------------
-          4️⃣ Fetch Buyer & Seller
-        -------------------------------------------------- */
-        const buyer = await Buyer.findOne({ buyerId });
-        const seller = await Seller.findOne({ customId: listing.sellerId })
-          .select("email phoneNumber name fcmTokens");
-
-        /* --------------------------------------------------
-          5️⃣ Create Booking
-        -------------------------------------------------- */
-        const newBooking = new DroneRental({
-          name,
-          phone,
-          location,
-          rentalDate: bookingDate,
-          rentalId,
-          sellerId: listing.sellerId,
-          buyerId,
-
-          sellerEmail: seller?.email,
-          sellerName: seller?.name,
-          sellerPhone: seller?.phoneNumber,
-
-          status: "pending",
-        });
-
-        await newBooking.save();
-
-
-        /* --------------------------------------------------
-          6️⃣ Notifications
-        -------------------------------------------------- */
-
-        // 🔔 Seller Notification
-        if (seller?.fcmTokens?.length > 0) {
-          await sendSellerPush(
-            seller.fcmTokens,
-            "New Drone Rental Request",
-            `New rental request from ${name}`,
-            {
-              bookingId: newBooking.drone_rental_id,
-              type: "drone_rental_new",
-            }
-          );
-        }
-
-        // 🔔 Buyer Notification
-        if (buyer?.fcmTokens?.length > 0) {
-          await sendBuyerPush(
-            buyer.fcmTokens,
-            "Rental Request Submitted",
-            `Your rental request (${newBooking.drone_rental_id}) is pending approval.`,
-            {
-              bookingId: newBooking.drone_rental_id,
-              type: "drone_rental_pending",
-            }
-          );
-        }
-
-        /* --------------------------------------------------
-          7️⃣ Success Response
-        -------------------------------------------------- */
-        return {
-          success: true,
-          message: "Booking created successfully",
-        };
-
-      } catch (err) {
-        /* --------------------------------------------------
-          8️⃣ Handle Duplicate Index Error (MongoDB)
-        -------------------------------------------------- */
-        if (err.code === 11000) {
-          return {
-            success: false,
-            message: "This drone is already booked for the selected date",
-          };
-        }
-
-        console.error("Error in createDroneRental:", err);
+     if (alreadyBooked) {
         return {
           success: false,
-          message: "Something went wrong",
+          message: "You have already booked this service for the selected date",
         };
       }
-    },
+
+      /* --------------------------------------------------
+        4️⃣ Fetch Buyer & Seller
+      -------------------------------------------------- */
+      const buyer = await Buyer.findOne({ buyerId });
+      const seller = await Seller.findOne({ customId: listing.sellerId })
+        .select("email phoneNumber name fcmTokens");
+
+      /* --------------------------------------------------
+        5️⃣ Create Booking
+      -------------------------------------------------- */
+      const newBooking = new DroneRental({
+        name,
+        phone,
+        location,
+        rentalDate: bookingDate,
+        rentalId,
+        sellerId: listing.sellerId,
+        buyerId,
+
+        sellerEmail: seller?.email,
+        sellerName: seller?.name,
+        sellerPhone: seller?.phoneNumber,
+
+        status: "pending",
+      });
+
+      await newBooking.save();
+
+      /* --------------------------------------------------
+        6️⃣ Notifications
+      -------------------------------------------------- */
+
+      // 🔔 Seller Notification
+      if (seller?.fcmTokens?.length) {
+        await sendSellerPush(
+          seller.fcmTokens,
+          "New Drone Rental REQUEST ",
+          `Drone Rental request from ${name}`,
+          {
+            bookingId: newBooking.drone_rental_id,
+            type: "drone_rental_new",
+          }
+        );
+      }
+
+      // 🔔 Buyer Notification
+      if (buyer?.fcmToken) {
+        await sendBuyerPush(
+          buyer.fcmToken,
+          "Rental Request Submitted ⏳",
+          `Your booked(${newBooking.name}).`,
+          {
+            bookingId: newBooking.drone_rental_id,
+            type: "drone_rental_pending",
+          }
+        );
+      }
+   // ---------------- DRONE ALERT STATUS CREATION ----------------
+     const reminderWindow = calculateDroneReminderTimes(rentalDate);
+
+      if (reminderWindow) {
+        await DroneAlertSchema.create({
+          bookingId: newBooking.drone_rental_id,
+          DroneId: newBooking.rentalId,
+          BuyerId: newBooking.buyerId,
+
+          DroneStatus: "ASSIGNED",
+          userStatus: "ACTIVE",
+
+          ...reminderWindow,
+        });
+      }
+      
+      // ============================
+      // testing purpose only...........
+      // =============================
+
+      //   // owner reminder window (1–3 minutes)
+      //   const ownerReminderStartAt = new Date(now.getTime() + 1 * 60 * 1000);
+      //   const ownerReminderEndAt   = new Date(now.getTime() + 3 * 60 * 1000);
+
+      //   // user fallback at 4 minutes
+      //   const userFallbackAt = new Date(now.getTime() + 4 * 60 * 1000);
+
+      //   await DroneAlertSchema.create({
+      //     bookingId: newBooking.drone_rental_id,
+      //     DroneId: newBooking.rentalId,
+      //     BuyerId: newBooking.buyerId,
+
+      //     DroneStatus: "ASSIGNED",
+
+      //     ownerReminderStartAt,
+      //     ownerReminderEndAt,
+      //     userFallbackAt,
+
+      //     ownerNotifyCount: 0,
+      //     userNotified: false,
+      //     userStatus: "ACTIVE",
+      //   });
+
+
+
+       console.log(`check 1 : user drone booked and save in drone_alert page ${DroneAlertSchema}`);
+                
+
+      /* --------------------------------------------------
+        7️⃣ Success Response
+      -------------------------------------------------- */
+      return {
+        success: true,
+        message: "Booking created successfully",
+      };
+
+    } catch (err) {
+      /* --------------------------------------------------
+        8️⃣ Handle Duplicate Index Error (MongoDB)
+      -------------------------------------------------- */
+      if (err.code === 11000) {
+        return {
+          success: false,
+          message: "This drone is already booked for the selected date",
+        };
+      }
+
+      console.error("Error in createDroneRental:", err);
+      return {
+        success: false,
+        message: "Something went wrong",
+      };
+    }
+      },
 
     updateDroneRentalContact: async (_, { drone_rental_id, phone, location }) => {
       const updateData = {};
@@ -233,46 +307,46 @@ export const droneRentalBookingResolvers = {
       return updated;
     },
 
-    deleteDroneRentalByBuyer: async (_, { drone_rental_id }) => {
-      const rental = await DroneRental.findOne({ drone_rental_id });
-      if (!rental) return { success: false, message: "Booking not found" };
+   deleteDroneRentalByBuyer: async (_, { drone_rental_id }) => {
+  const rental = await DroneRental.findOne({ drone_rental_id });
+  if (!rental) return { success: false, message: "Booking not found" };
 
-      const seller = await Seller.findOne({ customId: rental.sellerId });
+  const seller = await Seller.findOne({ customId: rental.sellerId });
 
-      if (rental.status === "pending") {
-        await DroneRental.deleteOne({ drone_rental_id });
-        return { success: true, message: "Pending booking deleted" };
-      }
+  if (rental.status === "pending") {
+    await DroneRental.deleteOne({ drone_rental_id });
+    return { success: true, message: "Pending booking deleted" };
+  }
 
-      if (rental.status === "confirmed") {
-        await DroneRental.deleteOne({ drone_rental_id });
+  if (rental.status === "confirmed") {
+    await DroneRental.deleteOne({ drone_rental_id });
 
-        // 🔔 SELLER – Buyer deleted booking
-        if (seller?.fcmTokens?.length) {
-          await sendSellerPush(
-            seller.fcmTokens,
-            "Booking Deleted by Buyer ⚠️",
-            `Confirmed booking (${drone_rental_id}) was deleted by buyer.`,
-            {
-              bookingId: drone_rental_id,
-              type: "drone_rental_deleted_by_buyer",
-            }
-          );
+    // 🔔 SELLER – Buyer deleted booking
+    if (seller?.fcmTokens?.length) {
+      await sendSellerPush(
+        seller.fcmTokens,
+        "Booking Deleted by Buyer ⚠️",
+        `Confirmed booking (${drone_rental_id}) was deleted by buyer.`,
+        {
+          bookingId: drone_rental_id,
+          type: "drone_rental_deleted_by_buyer",
         }
+      );
+    }
 
-        return {
-          success: true,
-          message: "Booking deleted & seller notified",
-        };
-      }
+    return {
+      success: true,
+      message: "Booking deleted & seller notified",
+    };
+  }
 
-      if (rental.status === "cancelled") {
-        rental.buyerDeleted = true;
-        await rental.save();
-        return { success: true, message: "Removed from your bookings" };
-      }
+  if (rental.status === "cancelled") {
+    rental.buyerDeleted = true;
+    await rental.save();
+    return { success: true, message: "Removed from your bookings" };
+  }
 
-      return { success: false, message: "Invalid booking state" };
+  return { success: false, message: "Invalid booking state" };
     },
 
     updateDroneRentalStatus: async (_, { drone_rental_id, status }) => {
@@ -281,8 +355,36 @@ export const droneRentalBookingResolvers = {
         { $set: { status } },
         { new: true, runValidators: true }
       );
-
+      
+      
       if (!updated) throw new Error(`Booking ${drone_rental_id} not found`);
+
+        if (status === "approved" || status === "confirmed") {
+        await DroneAlertSchema.updateOne(
+          { bookingId: drone_rental_id },
+          {
+            DroneStatus: "CONFIRMED",
+            userStatus: "ACTIVE"
+          }
+        );
+       }
+      
+          if (status === "rejected" || status === "cancelled") {
+            await DroneAlertSchema.updateOne(
+              { bookingId: drone_rental_id },
+              { DroneStatus: "PENDING" }
+            );
+         }
+      
+          if (status === "completed") {
+            await updateDroneAlertStatusByBooking(
+              bookingId,
+              "CONFIRMED"
+            );
+            console.log(`drone rental completed the task`);
+            // optional cleanup
+            await deleteDroneAlertByBooking(bookingId);
+          }
 
       const buyer = await Buyer.findOne({ buyerId: updated.buyerId });
       const seller = await Seller.findOne({ customId: updated.sellerId });
@@ -290,10 +392,10 @@ export const droneRentalBookingResolvers = {
       // ======================
       // BUYER NOTIFICATIONS
       // ======================
-      if (buyer?.fcmTokens) {
+      if (buyer?.fcmToken) {
         if (status === "confirmed") {
           await sendBuyerPush(
-            buyer.fcmTokens,
+            buyer.fcmToken,
             "Drone Rental Approved 🎉",
             `Your drone rental booking (${updated.drone_rental_id}) has been approved.`,
             {
@@ -306,7 +408,7 @@ export const droneRentalBookingResolvers = {
 
         if (status === "cancelled") {
           await sendBuyerPush(
-            buyer.fcmTokens,
+            buyer.fcmToken,
             "Drone Rental Cancelled ❌",
             `Your drone rental booking (${updated.drone_rental_id}) has been cancelled.`,
             {
@@ -334,7 +436,6 @@ export const droneRentalBookingResolvers = {
         }
 
         if (status === "cancelled") {
-
           await sendSellerPush(
             seller.fcmTokens,
             "Rental Cancelled ❌",
