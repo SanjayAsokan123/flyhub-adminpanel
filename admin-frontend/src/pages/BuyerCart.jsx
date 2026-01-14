@@ -15,7 +15,7 @@ const GET_BUYERS = gql`
   }
 `;
 
-const GET_CART = gql`
+const GET_CART = gql`  
   query GetCart($buyerId: String!) {
     getCart(buyerId: $buyerId) {
       id

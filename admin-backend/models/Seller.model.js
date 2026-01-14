@@ -1,4 +1,3 @@
-// admin-backend/models/Seller.js
 import mongoose from "mongoose";
 import { Counter } from "./Counter.model.js";
 

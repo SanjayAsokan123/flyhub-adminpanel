@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import "../styles/Regulatory.css";
 
-const GRAPHQL_URL = "https://flyhub-webadmin-4.onrender.com/graphql";
-const UPLOAD_URL = "https://flyhub-webadmin-4.onrender.com/upload";
+const GRAPHQL_URL = "http://localhost:5001/graphql";
+const UPLOAD_URL = "http://localhost:5001/upload";
 
 function RegulatoryPage() {
   const [title, setTitle] = useState("");
@@ -62,49 +62,49 @@ function RegulatoryPage() {
   }, []);
 
   // ------------------ Image Upload Handler ------------------
- const handleFileUpload = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  // 🔒 Frontend validation
-  if (!file.type.startsWith("image/")) {
-    alert("❌ Only images are allowed");
-    return;
-  }
-
-  if (file.size > 20 * 1024 * 1024) {
-    alert("❌ File too large (max 20MB)");
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("folder", "regulatory");
-
-  try {
-    const res = await fetch(UPLOAD_URL, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || "Upload failed");
+    // 🔒 Frontend validation
+    if (!file.type.startsWith("image/")) {
+      alert("❌ Only images are allowed");
+      return;
     }
 
-    const data = await res.json();
-
-    if (data.success && data.url) {
-      setImagePath(data.url);
-      alert("✅ Image uploaded successfully!");
-    } else {
-      throw new Error("Upload failed");
+    if (file.size > 20 * 1024 * 1024) {
+      alert("❌ File too large (max 20MB)");
+      return;
     }
-  } catch (err) {
-    console.error(err);
-    alert("❌ Upload error");
-  }
-};
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder", "regulatory");
+
+    try {
+      const res = await fetch(UPLOAD_URL, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Upload failed");
+      }
+
+      const data = await res.json();
+
+      if (data.success && data.url) {
+        setImagePath(data.url);
+        alert("✅ Image uploaded successfully!");
+      } else {
+        throw new Error("Upload failed");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("❌ Upload error");
+    }
+  };
 
   // Escape GraphQL string safely
   const safe = (str = "") =>

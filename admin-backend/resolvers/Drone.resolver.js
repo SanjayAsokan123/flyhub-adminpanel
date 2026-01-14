@@ -31,7 +31,7 @@ const baseLookup = [
       image: 1,
       status: 1,
       quantity: 1,
-      additionalInformation:1,
+      additionalInformation: 1,
       sellerId: 1,
       "sellerInfo.email": 1,
       "sellerInfo.phoneNumber": 1,
@@ -162,7 +162,7 @@ export const droneResolvers = {
           quantity: input.quantity || 1,
           status: "pending",
           sellerId: input.sellerId,
-          additionalInformation:input.additionalInformation,
+          additionalInformation: input.additionalInformation,
         });
 
         const savedDrone = await newDrone.save();
@@ -221,77 +221,77 @@ export const droneResolvers = {
       }
     },
 
-   updateDroneStatus: async (_, { uin, status }, { pubsub }) => {
-  try {
-    let updatedDrone = await Drone.findOne({ uin });
-    if (!updatedDrone) {
-      throw new Error(`Drone with UIN ${uin} not found`);
-    }
+    updateDroneStatus: async (_, { droneId, status }, { pubsub }) => {
+      try {
+        let updatedDrone = await Drone.findOne({ droneId });
+        if (!updatedDrone) {
+          throw new Error(`Drone with droneId ${droneId} not found`);
+        }
 
-    // ✅ FIX: Explicit quantity handling
-    if (status === "approved" && updatedDrone.quantity <= 0) {
-      updatedDrone.quantity = 1;
-    }
+        // ✅ FIX: Explicit quantity handling
+        if (status === "approved" && updatedDrone.quantity <= 0) {
+          updatedDrone.quantity = 1;
+        }
 
-    updatedDrone.status = status;
-    await updatedDrone.save();
+        updatedDrone.status = status;
+        await updatedDrone.save();
 
-    const seller = await Seller.findOne({ customId: updatedDrone.sellerId });
-    if (!seller) throw new Error("Seller not found");
+        const seller = await Seller.findOne({ customId: updatedDrone.sellerId });
+        if (!seller) throw new Error("Seller not found");
 
-    /* ================= EMAIL ================= */
-    if (seller.email) {
-      await sendSellerStatusMail({
-        to: seller.email,
-        productType: "Drone",
-        productName: updatedDrone.name,
-        status,
-      });
-    }
+        /* ================= EMAIL ================= */
+        if (seller.email) {
+          await sendSellerStatusMail({
+            to: seller.email,
+            productType: "Drone",
+            productName: updatedDrone.name,
+            status,
+          });
+        }
 
-    /* ================= PUSH ================= */
-    if (seller.fcmTokens?.length) {
-      const titleMap = {
-        approved: "✅ Drone Approved",
-        rejected: "❌ Drone Rejected",
-        pending: "⏳ Drone Under Review",
-      };
+        /* ================= PUSH ================= */
+        if (seller.fcmTokens?.length) {
+          const titleMap = {
+            approved: "✅ Drone Approved",
+            rejected: "❌ Drone Rejected",
+            pending: "⏳ Drone Under Review",
+          };
 
-      const msgMap = {
-        approved: `Your drone "${updatedDrone.name}" has been approved.`,
-        rejected: `Your drone "${updatedDrone.name}" was rejected.`,
-        pending: `Your drone "${updatedDrone.name}" is under review.`,
-      };
+          const msgMap = {
+            approved: `Your drone "${updatedDrone.name}" has been approved.`,
+            rejected: `Your drone "${updatedDrone.name}" was rejected.`,
+            pending: `Your drone "${updatedDrone.name}" is under review.`,
+          };
 
-      await sendSellerPush(
-        seller.fcmTokens,
-        titleMap[status],
-        msgMap[status],
-        { uin, status, type: `drone_${status}` }
-      );
-    }
+          await sendSellerPush(
+            seller.fcmTokens,
+            titleMap[status],
+            msgMap[status],
+            { droneId, status, type: `drone_${status}` }
+          );
+        }
 
-    await createSellerNotification({
-      sellerId: updatedDrone.sellerId,
-      title: `Drone ${status.toUpperCase()}`,
-      message:
-        status === "approved"
-          ? `Your drone "${updatedDrone.name}" has been approved.`
-          : status === "rejected"
-          ? `Your drone "${updatedDrone.name}" was rejected.`
-          : `Your drone "${updatedDrone.name}" is under review.`,
-      type: "drone_status",
-      data: { uin, status },
-      url: `/seller/drones/${uin}`,
-      pubsub,
-    });
+        await createSellerNotification({
+          sellerId: updatedDrone.sellerId,
+          title: `Drone ${status.toUpperCase()}`,
+          message:
+            status === "approved"
+              ? `Your drone "${updatedDrone.name}" has been approved.`
+              : status === "rejected"
+                ? `Your drone "${updatedDrone.name}" was rejected.`
+                : `Your drone "${updatedDrone.name}" is under review.`,
+          type: "drone_status",
+          data: { droneId, status },
+          url: `/seller/drones/${droneId}`,
+          pubsub,
+        });
 
-    return updatedDrone;
-  } catch (error) {
-    console.error("❌ updateDroneStatus Error:", error);
-    throw new Error(`Failed to update drone status: ${error.message}`);
-  }
-},
+        return updatedDrone;
+      } catch (error) {
+        console.error("❌ updateDroneStatus Error:", error);
+        throw new Error(`Failed to update drone status: ${error.message}`);
+      }
+    },
 
 
 
@@ -316,7 +316,7 @@ export const droneResolvers = {
           title: "🗑️ Drone Deleted",
           message: `Your drone "${deleted.name}" has been removed from Flyhub.`,
           type: "drone_deleted",
-          data: {droneId },
+          data: { droneId },
           url: `/seller/drones`,
           pubsub,
         });

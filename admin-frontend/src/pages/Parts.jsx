@@ -1,14 +1,14 @@
 import React, { useEffect, useState, useRef } from "react";
 import "../styles/Parts.css";
 
-const GRAPHQL_URL = "http://localhost:5001/graphql";
+const GRAPHQL_URL = "http://localhost:5001/graphql"; 
 
 function Parts() {
   const [parts, setParts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState("all");
-  const [updatingStatus, setUpdatingStatus] = useState({ id: null, status: null });
+  const [updatingIds, setUpdatingIds] = useState(new Set());
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: "name", direction: "asc" });
   const [expandedSellers, setExpandedSellers] = useState(new Set());
@@ -170,7 +170,9 @@ function Parts() {
 
   // Update part status
   const updatePartStatus = async (partId, newStatus) => {
-    setUpdatingStatus({ id: partId, status: newStatus });
+    const updatingIdsCopy = new Set(updatingIds);
+    updatingIdsCopy.add(`${partId}-${newStatus}`);
+    setUpdatingIds(updatingIdsCopy);
 
     const formattedPartId = String(partId);
     const formattedStatus = newStatus.toLowerCase();
@@ -221,9 +223,11 @@ function Parts() {
     } catch (err) {
       console.error("Update Error:", err);
       setError(err.message);
+    } finally {
+      const newUpdatingIdsCopy = new Set(updatingIds);
+      newUpdatingIdsCopy.delete(`${partId}-${newStatus}`);
+      setUpdatingIds(newUpdatingIdsCopy);
     }
-
-    setUpdatingStatus({ id: null, status: null });
   };
 
   // Delete part - PERMANENT deletion
@@ -232,7 +236,9 @@ function Parts() {
       return;
     }
 
-    setUpdatingStatus({ id: partId, status: "deleting" });
+    const updatingIdsCopy = new Set(updatingIds);
+    updatingIdsCopy.add(`${partId}-deleting`);
+    setUpdatingIds(updatingIdsCopy);
 
     const mutation = `
       mutation DeletePart($partId: String!) {
@@ -275,9 +281,11 @@ function Parts() {
       console.error("Delete Error:", err);
       setError(err.message);
       alert("Failed to delete part: " + err.message);
+    } finally {
+      const newUpdatingIdsCopy = new Set(updatingIds);
+      newUpdatingIdsCopy.delete(`${partId}-deleting`);
+      setUpdatingIds(newUpdatingIdsCopy);
     }
-
-    setUpdatingStatus({ id: null, status: null });
   };
 
   // View part details
@@ -359,14 +367,10 @@ function Parts() {
     return <span className="sort-icon active">{sortConfig.direction === "asc" ? "↑" : "↓"}</span>;
   };
 
-  const isUpdating = (partId, status) => {
-    return updatingStatus.id === partId && updatingStatus.status === status;
-  };
-
   const PartRow = ({ part, isSubRow = false }) => (
-    <tr key={part.partId} className={`part-row ${isSubRow ? 'sub-row' : ''}`}>
+    <tr key={part.partId} className={`drone-row ${isSubRow ? 'sub-row' : ''}`}>
       <td className="sticky-col sticky-col-id">
-        <div className="part-id-cell">
+        <div className="drone-id-cell">
           <div className="id-badge">{part.partId}</div>
         </div>
       </td>
@@ -388,12 +392,12 @@ function Parts() {
             <img
               src={part.image}
               alt={part.name}
-              className="part-thumbnail"
+              className="drone-thumbnail"
             />
           )}
           <div className="name-info">
             <strong>{part.name}</strong>
-            <div className="part-details">
+            <div className="drone-details">
               <span className="brand">{part.brand}</span>
               <span className="part-type">Part</span>
             </div>
@@ -436,10 +440,10 @@ function Parts() {
               <button
                 className="action-btn approve"
                 onClick={() => updatePartStatus(part.partId, "approved")}
-                disabled={isUpdating(part.partId, "approved")}
+                disabled={updatingIds.has(`${part.partId}-approved`)}
                 title="Approve part"
               >
-                {isUpdating(part.partId, "approved") ? (
+                {updatingIds.has(`${part.partId}-approved`) ? (
                   <span className="loading-dots"></span>
                 ) : (
                   <span>✓</span>
@@ -448,10 +452,10 @@ function Parts() {
               <button
                 className="action-btn reject"
                 onClick={() => updatePartStatus(part.partId, "rejected")}
-                disabled={isUpdating(part.partId, "rejected")}
+                disabled={updatingIds.has(`${part.partId}-rejected`)}
                 title="Reject part"
               >
-                {isUpdating(part.partId, "rejected") ? (
+                {updatingIds.has(`${part.partId}-rejected`) ? (
                   <span className="loading-dots"></span>
                 ) : (
                   <span>✗</span>
@@ -465,10 +469,10 @@ function Parts() {
               <button
                 className="action-btn pending"
                 onClick={() => updatePartStatus(part.partId, "pending")}
-                disabled={isUpdating(part.partId, "pending")}
+                disabled={updatingIds.has(`${part.partId}-pending`)}
                 title="Move to pending"
               >
-                {isUpdating(part.partId, "pending") ? (
+                {updatingIds.has(`${part.partId}-pending`) ? (
                   <span className="loading-dots"></span>
                 ) : (
                   <span>⏳</span>
@@ -477,10 +481,10 @@ function Parts() {
               <button
                 className="action-btn reject"
                 onClick={() => updatePartStatus(part.partId, "rejected")}
-                disabled={isUpdating(part.partId, "rejected")}
+                disabled={updatingIds.has(`${part.partId}-rejected`)}
                 title="Reject part"
               >
-                {isUpdating(part.partId, "rejected") ? (
+                {updatingIds.has(`${part.partId}-rejected`) ? (
                   <span className="loading-dots"></span>
                 ) : (
                   <span>✗</span>
@@ -494,10 +498,10 @@ function Parts() {
               <button
                 className="action-btn pending"
                 onClick={() => updatePartStatus(part.partId, "pending")}
-                disabled={isUpdating(part.partId, "pending")}
+                disabled={updatingIds.has(`${part.partId}-pending`)}
                 title="Move to pending"
               >
-                {isUpdating(part.partId, "pending") ? (
+                {updatingIds.has(`${part.partId}-pending`) ? (
                   <span className="loading-dots"></span>
                 ) : (
                   <span>⏳</span>
@@ -506,10 +510,10 @@ function Parts() {
               <button
                 className="action-btn approve"
                 onClick={() => updatePartStatus(part.partId, "approved")}
-                disabled={isUpdating(part.partId, "approved")}
+                disabled={updatingIds.has(`${part.partId}-approved`)}
                 title="Approve part"
               >
-                {isUpdating(part.partId, "approved") ? (
+                {updatingIds.has(`${part.partId}-approved`) ? (
                   <span className="loading-dots"></span>
                 ) : (
                   <span>✓</span>
@@ -529,10 +533,10 @@ function Parts() {
           <button
             className="action-btn delete"
             onClick={() => deletePart(part.partId)}
-            disabled={isUpdating(part.partId, "deleting")}
+            disabled={updatingIds.has(`${part.partId}-deleting`)}
             title="Delete part"
           >
-            {isUpdating(part.partId, "deleting") ? (
+            {updatingIds.has(`${part.partId}-deleting`) ? (
               <span className="loading-dots"></span>
             ) : (
               <span>🗑</span>
@@ -544,7 +548,7 @@ function Parts() {
   );
 
   return (
-    <div className="parts-container">
+    <div className="drones-container">
       {/* Header */}
       <div className="header-section">
         <div className="header-top">
@@ -643,7 +647,7 @@ function Parts() {
           </div>
         ) : (
           <div className="table-scroll-container" ref={tableRef} onScroll={handleTableScroll}>
-            <table className="parts-table">
+            <table className="drones-table">
               <thead>
                 <tr>
                   <th className="sticky-col sticky-col-id" onClick={() => handleSort("partId")}>
@@ -721,7 +725,7 @@ function Parts() {
                                 {isExpanded ? "▼" : "▶"}
                               </span>
                               <span className="seller-id">{sellerId}</span>
-                              <span className="part-count">{sellerParts.length} parts</span>
+                              <span className="drone-count">{sellerParts.length} parts</span>
                               <div className="seller-info">
                                 {sellerParts[0].sellerInfo?.email && (
                                   <span className="info-item email">📧 {sellerParts[0].sellerInfo.email}</span>
@@ -804,8 +808,8 @@ function Parts() {
 
       {/* Part Details Modal */}
       {viewingPart && (
-        <div className="part-modal-overlay" onClick={closePartDetails}>
-          <div className="part-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="drone-modal-overlay" onClick={closePartDetails}>
+          <div className="drone-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Part Details</h2>
               <button className="modal-close" onClick={closePartDetails}>
@@ -818,7 +822,7 @@ function Parts() {
                   <img
                     src={viewingPart.image}
                     alt={viewingPart.name}
-                    className="modal-part-image"
+                    className="modal-drone-image"
                   />
                 )}
                 <div className="modal-name">
@@ -888,9 +892,102 @@ function Parts() {
               </div>
             </div>
             <div className="modal-footer">
-              <button className="modal-action-btn" onClick={closePartDetails}>
-                Close
-              </button>
+              <div className="modal-actions">
+                {viewingPart.status === "pending" && (
+                  <>
+                    <button
+                      className="modal-action-btn approve"
+                      onClick={() => {
+                        updatePartStatus(viewingPart.partId, "approved");
+                        closePartDetails();
+                      }}
+                      disabled={updatingIds.has(`${viewingPart.partId}-approved`)}
+                    >
+                      {updatingIds.has(`${viewingPart.partId}-approved`) ? "Processing..." : "Approve"}
+                    </button>
+                    <button
+                      className="modal-action-btn reject"
+                      onClick={() => {
+                        updatePartStatus(viewingPart.partId, "rejected");
+                        closePartDetails();
+                      }}
+                      disabled={updatingIds.has(`${viewingPart.partId}-rejected`)}
+                    >
+                      {updatingIds.has(`${viewingPart.partId}-rejected`) ? "Processing..." : "Reject"}
+                    </button>
+                  </>
+                )}
+
+                {viewingPart.status === "approved" && (
+                  <>
+                    <button
+                      className="modal-action-btn pending"
+                      onClick={() => {
+                        updatePartStatus(viewingPart.partId, "pending");
+                        closePartDetails();
+                      }}
+                      disabled={updatingIds.has(`${viewingPart.partId}-pending`)}
+                    >
+                      {updatingIds.has(`${viewingPart.partId}-pending`) ? "Processing..." : "Move to Pending"}
+                    </button>
+                    <button
+                      className="modal-action-btn reject"
+                      onClick={() => {
+                        updatePartStatus(viewingPart.partId, "rejected");
+                        closePartDetails();
+                      }}
+                      disabled={updatingIds.has(`${viewingPart.partId}-rejected`)}
+                    >
+                      {updatingIds.has(`${viewingPart.partId}-rejected`) ? "Processing..." : "Reject"}
+                    </button>
+                  </>
+                )}
+
+                {viewingPart.status === "rejected" && (
+                  <>
+                    <button
+                      className="modal-action-btn pending"
+                      onClick={() => {
+                        updatePartStatus(viewingPart.partId, "pending");
+                        closePartDetails();
+                      }}
+                      disabled={updatingIds.has(`${viewingPart.partId}-pending`)}
+                    >
+                      {updatingIds.has(`${viewingPart.partId}-pending`) ? "Processing..." : "Move to Pending"}
+                    </button>
+                    <button
+                      className="modal-action-btn approve"
+                      onClick={() => {
+                        updatePartStatus(viewingPart.partId, "approved");
+                        closePartDetails();
+                      }}
+                      disabled={updatingIds.has(`${viewingPart.partId}-approved`)}
+                    >
+                      {updatingIds.has(`${viewingPart.partId}-approved`) ? "Processing..." : "Approve"}
+                    </button>
+                  </>
+                )}
+
+                <button
+                  className="modal-action-btn delete"
+                  onClick={() => {
+                    if (window.confirm("Are you sure you want to permanently delete this part?")) {
+                      deletePart(viewingPart.partId);
+                      closePartDetails();
+                    }
+                  }}
+                  disabled={updatingIds.has(`${viewingPart.partId}-deleting`)}
+                >
+                  {updatingIds.has(`${viewingPart.partId}-deleting`) ? "Deleting..." : "Delete"}
+                </button>
+
+                <button
+                  className="modal-action-btn close"
+                  onClick={closePartDetails}
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

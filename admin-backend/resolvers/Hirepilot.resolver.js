@@ -238,12 +238,12 @@ export const hirePilotResolvers = {
           throw new Error("pilotId is required");
         }
 
-        const existingPilot = await HirePilot.findOne({ pilotId: input.pilotId });
-        if (existingPilot) {
-          throw new Error(
-            `Pilot ID already exists: ${input.pilotId}. Please regenerate a new ID.`
-          );
-        }
+        // const existingPilot = await HirePilot.findOne({ pilotId: input.pilotId });
+        // if (existingPilot) {
+        //   throw new Error(
+        //     `Pilot ID already exists: ${input.pilotId}. Please regenerate a new ID.`
+        //   );
+        // }
 
         const newPilot = new HirePilot({
           ...input,

@@ -67,6 +67,6 @@ export const droneTypeDefs = gql`
     createDrone(input: DroneInput!): Drone
     updateDrone(droneId: String!, input: UpdateDroneInput!): Drone
     deleteDrone(droneId: String!): Drone
-    updateDroneStatus(uin: String!, status: String!): Drone
+    updateDroneStatus(droneId: String!, status: String!): Drone
   }
 `;

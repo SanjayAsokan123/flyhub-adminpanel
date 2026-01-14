@@ -1,6 +1,7 @@
 import PilotRental from "../models/Buyer_Booking_Pilot_Rental.model.js";
 import { HirePilot } from "../models/Hirepilot.model.js";
 import { Seller } from "../models/Seller.model.js";
+import {Buyer} from "../models/Buyer.model.js";
 import { createSellerNotification } from "../utils/createSellerNotification.js";
 import { sendSellerStatusMail } from "../utils/emailService.js";
 // BUYER push notifications

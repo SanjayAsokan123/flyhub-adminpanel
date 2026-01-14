@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import "../styles/Training.css";
 
-const GRAPHQL_URL = "https://flyhub-webadmin-4.onrender.com/graphql";
-const UPLOAD_URL = "https://flyhub-webadmin-4.onrender.com/upload";  // Backend that uploads to Firebase
+const GRAPHQL_URL = "http://localhost:5001/graphql";
+const UPLOAD_URL = "http://localhost:5001/upload";
 
 function TrainingPage() {
   const [title, setTitle] = useState("");
